@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pong on the taskbar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2F7F7A}a:hover{color:#1F5E5A}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #2F7F7A;outline-offset:2px}
+@keyframes capyBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes popIn{0%{opacity:0;transform:translateY(10px) scale(.96)}100%{opacity:1;transform:none}}
+.bob{animation:capyBob 2.4s ease-in-out infinite}
+.pop{animation:popIn .3s cubic-bezier(.3,1.4,.5,1) both}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; background: #DCEBE4; font-family: 'Nunito', system-ui, sans-serif; color: #2A2622">
+
+<div aria-hidden="true" style="position: absolute; left: -140px; top: 430px; width: 540px; height: 540px; border-radius: 50%; background: #CFE3DA"></div>
+<div aria-hidden="true" style="position: absolute; right: -90px; top: -150px; width: 470px; height: 470px; border-radius: 50%; background: #E6F0EA"></div>
+
+<div style="position: absolute; left: 24px; top: 20px; display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 16px; background: #FFFFFF; border-radius: 999px; box-shadow: 0 4px 14px rgba(42,38,34,.08); font-size: 13px">
+<span style="font-weight: 800; color: #6B6259; letter-spacing: .08em; text-transform: uppercase; font-size: 11px">Demo</span>
+<button onClick="{{simulate}}" style="border: 0; background: #F5B83D; color: #2A2622; font-weight: 800; font-size: 13px; padding: 0 16px; height: 40px; border-radius: 999px">Hourly check-in</button>
+<button onClick="{{simulateMorning}}" style="border: 0; background: #2F7F7A; color: #FFFFFF; font-weight: 800; font-size: 13px; padding: 0 16px; height: 40px; border-radius: 999px">Monday morning (missed days)</button>
+<button onClick="{{reset}}" style="border: 1px solid #E3D8C8; background: #FFFFFF; color: #2A2622; font-weight: 700; font-size: 13px; padding: 0 14px; height: 40px; border-radius: 999px">Reset</button>
+<span style="color: #6B6259">or click Pong</span>
+</div>
+
+<div style="position: absolute; left: 96px; top: 92px; width: 800px; height: 540px; background: #FFFFFF; border-radius: 12px; box-shadow: 0 20px 50px rgba(42,38,34,.14); overflow: hidden; display: flex; flex-direction: column">
+<div style="height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: #F3F1EC; border-bottom: 1px solid #E6E1D8; font-size: 13px; color: #6B6259">
+<span style="font-weight: 700">MapPanel.tsx — dcwd_pip-frontend</span>
+<div aria-hidden="true" style="display: flex; gap: 16px; align-items: center">
+<svg width="12" height="12" viewBox="0 0 12 12"><path d="M1 6h10" stroke="#8C8378" stroke-width="1.4"></path></svg>
+<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="#8C8378" stroke-width="1.4"></rect></svg>
+<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="#8C8378" stroke-width="1.4"></path></svg>
+</div>
+</div>
+<div style="flex: 1; display: flex; min-height: 0">
+<div style="width: 190px; background: #FAF8F4; border-right: 1px solid #EEE9E0; padding: 16px 14px; display: flex; flex-direction: column; gap: 9px; font-size: 13px; color: #6B6259">
+<span style="font-weight: 800; font-size: 11px; letter-spacing: .08em; text-transform: uppercase">Explorer</span>
+<span>components</span>
+<span style="padding-left: 12px">PipCard.tsx</span>
+<span style="padding-left: 12px; color: #2A2622; font-weight: 700; background: #EFE8DC; border-radius: 6px; padding: 3px 6px 3px 12px">MapPanel.tsx</span>
+<span style="padding-left: 12px">RemarksPanel.tsx</span>
+<span>hooks</span>
+<span style="padding-left: 12px">usePips.ts</span>
+<span>lib</span>
+<span style="padding-left: 12px">api.ts</span>
+</div>
+<div style="flex: 1; padding: 18px 22px; display: flex; flex-direction: column; gap: 5px; font-family: ui-monospace, Consolas, monospace; font-size: 13.5px; line-height: 1.5; white-space: pre; color: #4A433C">
+<div><span style="color: #A79E92">1  </span><span style="color: #8A4FB5">import</span> &#123; MapContainer, Marker &#125; <span style="color: #8A4FB5">from</span> <span style="color: #2F7F7A">'react-leaflet'</span>;</div>
+<div><span style="color: #A79E92">2  </span><span style="color: #8A4FB5">import</span> &#123; usePips &#125; <span style="color: #8A4FB5">from</span> <span style="color: #2F7F7A">'@/hooks/usePips'</span>;</div>
+<div><span style="color: #A79E92">3  </span></div>
+<div><span style="color: #A79E92">4  </span><span style="color: #8A4FB5">export function</span> <span style="color: #B5651D">MapPanel</span>() &#123;</div>
+<div><span style="color: #A79E92">5  </span>  <span style="color: #8A4FB5">const</span> &#123; data: pips &#125; = usePips(&#123; dept: <span style="color: #2F7F7A">'ENG'</span> &#125;);</div>
+<div><span style="color: #A79E92">6  </span>  <span style="color: #8A4FB5">return</span> (</div>
+<div><span style="color: #A79E92">7  </span>    &lt;MapContainer center=&#123;[7.07, 125.61]&#125; zoom=&#123;12&#125;&gt;</div>
+<div><span style="color: #A79E92">8  </span>      &#123;pips?.map((p) =&gt; (</div>
+<div><span style="color: #A79E92">9  </span>        &lt;Marker key=&#123;p.id&#125; position=&#123;p.coords&#125;&gt;</div>
+<div><span style="color: #A79E92">10 </span>          &lt;PipPopup pip=&#123;p&#125; /&gt;</div>
+<div><span style="color: #A79E92">11 </span>        &lt;/Marker&gt;</div>
+<div><span style="color: #A79E92">12 </span>      ))&#125;</div>
+<div><span style="color: #A79E92">13 </span>    &lt;/MapContainer&gt;</div>
+<div><span style="color: #A79E92">14 </span>  );</div>
+<div><span style="color: #A79E92">15 </span>&#125;</div>
+</div>
+</div>
+</div>
+
+<sc-if value="{{showAsk}}" hint-placeholder-val="{{ false }}">
+<div class="pop" style="position: absolute; right: 284px; bottom: 92px; width: 300px; box-sizing: border-box; background: #FFFFFF; border-radius: 22px; padding: 18px 18px 16px; box-shadow: 0 22px 50px rgba(42,38,34,.2); display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 23px; line-height: 1.15">What are you up to?</span>
+<span style="font-size: 14px; color: #6B6259; line-height: 1.4">It's been about an hour since your last note.</span>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px">
+<button onClick="{{tell}}" style="border: 0; background: #F5B83D; color: #2A2622; font-weight: 800; font-size: 14px; padding: 0 16px; height: 44px; border-radius: 14px">Tell Pong</button>
+<button onClick="{{laterBtn}}" style="border: 1px solid #E3D8C8; background: #FFFFFF; color: #2A2622; font-weight: 700; font-size: 14px; padding: 0 14px; height: 44px; border-radius: 14px">Later</button>
+<button onClick="{{onBreak}}" style="border: 1px solid #E3D8C8; background: #FFFFFF; color: #2A2622; font-weight: 700; font-size: 14px; padding: 0 14px; height: 44px; border-radius: 14px">On a break</button>
+</div>
+<div aria-hidden="true" style="position: absolute; right: -8px; bottom: 34px; width: 18px; height: 18px; background: #FFFFFF; transform: rotate(45deg); border-radius: 3px"></div>
+</div>
+</sc-if>
+
+<sc-if value="{{showMissedIntro}}" hint-placeholder-val="{{ false }}">
+<div class="pop" style="position: absolute; right: 284px; bottom: 92px; width: 320px; box-sizing: border-box; background: #FFFFFF; border-radius: 22px; padding: 18px 18px 16px; box-shadow: 0 22px 50px rgba(42,38,34,.2); display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 23px; line-height: 1.15">Good morning!</span>
+<span style="font-size: 14px; color: #4A433C; line-height: 1.45">I didn't hear from you on <b>Sat, Oct 24</b> and <b>Sun, Oct 25</b>. Let's fill them in so your DAR has no gaps.</span>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px">
+<button onClick="{{startMissed}}" style="border: 0; background: #F5B83D; color: #2A2622; font-weight: 800; font-size: 14px; padding: 0 16px; height: 44px; border-radius: 14px">Fill them in</button>
+<button onClick="{{laterBtn}}" style="border: 1px solid #E3D8C8; background: #FFFFFF; color: #2A2622; font-weight: 700; font-size: 14px; padding: 0 14px; height: 44px; border-radius: 14px">Later</button>
+</div>
+<div aria-hidden="true" style="position: absolute; right: -8px; bottom: 34px; width: 18px; height: 18px; background: #FFFFFF; transform: rotate(45deg); border-radius: 3px"></div>
+</div>
+</sc-if>
+
+<sc-if value="{{showMissed}}" hint-placeholder-val="{{ false }}">
+<div class="pop" style="position: absolute; right: 150px; bottom: 192px; width: 440px; box-sizing: border-box; background: #FFFFFF; border-radius: 24px; padding: 20px 20px 18px; box-shadow: 0 26px 64px rgba(42,38,34,.24); display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<span style="align-self: flex-start; font-size: 11.5px; font-weight: 800; color: #7A4E0B; background: #FFE7B3; border-radius: 999px; padding: 3px 10px">{{mCount}}</span>
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 24px; line-height: 1.15">{{mTitle}}</span>
+<span style="font-size: 13px; color: #6B6259">{{mSub}}</span>
+</div>
+<button onClick="{{closeMissed}}" aria-label="Close" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 0; background: #F4EFE6; display: flex; align-items: center; justify-content: center">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="#2A2622" stroke-width="2" stroke-linecap="round"></path></svg>
+</button>
+</div>
+
+<sc-if value="{{isMQ}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<button onClick="{{mYes}}" style="border: 2px solid #E3D8C8; background: #FFFCF7; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; min-height: 96px">
+<svg aria-hidden="true" width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="12" fill="#E3F1EF"></circle><path d="M16.5 7.5a6 6 0 1 0 2 9.5 5 5 0 0 1-2-9.5z" fill="#2F7F7A"></path></svg>
+<span style="font-weight: 800; font-size: 16px; color: #2A2622">Yes, I was off</span>
+<span style="font-size: 12.5px; color: #6B6259">Rest day or leave</span>
+</button>
+<button onClick="{{mNo}}" style="border: 2px solid #E3D8C8; background: #FFFCF7; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; min-height: 96px">
+<svg aria-hidden="true" width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="12" fill="#FFF1D6"></circle><path d="M8 18l1-4 7-7 3 3-7 7-4 1z" stroke="#7A4E0B" stroke-width="1.6" fill="none" stroke-linejoin="round"></path></svg>
+<span style="font-weight: 800; font-size: 16px; color: #2A2622">No, I worked</span>
+<span style="font-size: 12.5px; color: #6B6259">Add what you did</span>
+</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isMType}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11.5px; font-weight: 800; color: #6B6259; text-transform: uppercase; letter-spacing: .07em">What kind of day off?</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{leaveOpts}}" as="lv" hint-placeholder-count="3">
+<button onClick="{{lv.pick}}" aria-pressed="{{lv.pressed}}" style="border: 2px solid {{lv.bd}}; background: {{lv.bg}}; color: {{lv.fg}}; border-radius: 14px; min-height: 64px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+<span style="font-weight: 800; font-size: 14px">{{lv.label}}</span>
+<span style="font-size: 11.5px; font-weight: 700">{{lv.sub}}</span>
+</button>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; color: #6B6259">Shows as "{{leaveCell}}" across that day's column in your DAR.</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<button onClick="{{mBack}}" style="border: 0; background: transparent; color: #2F7F7A; font-weight: 800; font-size: 14px; padding: 0 8px; height: 44px">Back</button>
+<button onClick="{{saveLeave}}" style="background: #2F7F7A; color: #FFFFFF; border: 0; font-weight: 800; font-size: 15px; padding: 0 24px; height: 48px; border-radius: 14px">Save</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isMLog}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{hasBacklog}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px; background: #F7FBFA; border: 1px solid #D5EAE6; border-radius: 14px; padding: 10px 12px">
+<sc-for list="{{backlog}}" as="bl" hint-placeholder-count="1">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" style="flex-shrink: 0"><circle cx="8" cy="8" r="7.5" fill="#2F7F7A"></circle><path d="M4.8 8.2l2.1 2.1 4.3-4.6" stroke="#FFFFFF" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<span style="flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{bl.text}}</span>
+<span style="font-size: 11.5px; font-weight: 800; color: #1F5E5A; background: #E3F1EF; border-radius: 999px; padding: 2px 8px; white-space: nowrap">{{bl.task}} · {{bl.pct}}%</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="pong-backlog" style="font-size: 11.5px; font-weight: 800; color: #6B6259; text-transform: uppercase; letter-spacing: .07em">{{mLogLabel}}</label>
+<input id="pong-backlog" type="text" value="{{text}}" onChange="{{onText}}" onKeyDown="{{onBacklogKey}}" placeholder="e.g. hotfix for the billing lookup timeout" style="height: 50px; box-sizing: border-box; border-radius: 14px; border: 2px solid #E3D8C8; padding: 0 14px; font-size: 16px; font-family: inherit; color: #2A2622; background: #FFFCF7">
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{tasks}}" as="t" hint-placeholder-count="5">
+<button onClick="{{t.pick}}" aria-pressed="{{t.pressed}}" style="border: 2px solid {{t.bd}}; background: {{t.bg}}; color: {{t.fg}}; font-weight: 700; font-size: 13px; padding: 0 12px; height: 40px; border-radius: 999px">{{t.short}}</button>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{pcts}}" as="p" hint-placeholder-count="4">
+<button onClick="{{p.pick}}" aria-pressed="{{p.pressed}}" style="border: 2px solid {{p.bd}}; background: {{p.bg}}; color: {{p.fg}}; height: 46px; border-radius: 14px; font-weight: 800; font-size: 15px">{{p.label}}</button>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 10px">
+<button onClick="{{addLog}}" style="border: 2px solid #2F7F7A; background: #FFFFFF; color: #1F5E5A; font-weight: 800; font-size: 14px; padding: 0 16px; height: 48px; border-radius: 14px">+ Add log</button>
+<button onClick="{{doneLog}}" style="background: #2F7F7A; color: #FFFFFF; border: 0; font-weight: 800; font-size: 15px; padding: 0 20px; height: 48px; border-radius: 14px; opacity: {{doneOp}}">{{doneLabel}}</button>
+</div>
+</sc-if>
+<div aria-hidden="true" style="position: absolute; right: 70px; bottom: -8px; width: 18px; height: 18px; background: #FFFFFF; transform: rotate(45deg); border-radius: 3px"></div>
+</div>
+</sc-if>
+
+<sc-if value="{{showEntry}}" hint-placeholder-val="{{ false }}">
+<div class="pop" style="position: absolute; right: 150px; bottom: 192px; width: 430px; box-sizing: border-box; background: #FFFFFF; border-radius: 24px; padding: 20px 20px 18px; box-shadow: 0 26px 64px rgba(42,38,34,.24); display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 24px; line-height: 1.15">What are you up to?</span>
+<span style="font-size: 13px; color: #6B6259">Monday, Oct 26 · {{clock}}</span>
+</div>
+<button onClick="{{close}}" aria-label="Close" style="width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; border: 0; background: #F4EFE6; display: flex; align-items: center; justify-content: center">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12" stroke="#2A2622" stroke-width="2" stroke-linecap="round"></path></svg>
+</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="capy-note" style="font-size: 11.5px; font-weight: 800; color: #6B6259; text-transform: uppercase; letter-spacing: .07em">One line is enough</label>
+<input id="capy-note" type="text" value="{{text}}" onChange="{{onText}}" onKeyDown="{{onKey}}" placeholder="e.g. popup info card for each PIP pin" style="height: 50px; box-sizing: border-box; border-radius: 14px; border: 2px solid #E3D8C8; padding: 0 14px; font-size: 16px; font-family: inherit; color: #2A2622; background: #FFFCF7">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11.5px; font-weight: 800; color: #6B6259; text-transform: uppercase; letter-spacing: .07em">Which DAR task?</span>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{tasks}}" as="t" hint-placeholder-count="5">
+<button onClick="{{t.pick}}" aria-pressed="{{t.pressed}}" style="border: 2px solid {{t.bd}}; background: {{t.bg}}; color: {{t.fg}}; font-weight: 700; font-size: 13px; padding: 0 12px; height: 40px; border-radius: 999px">{{t.short}}</button>
+</sc-for>
+</div>
+<span style="font-size: 12.5px; color: #6B6259; line-height: 1.35">{{dutyLine}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 11.5px; font-weight: 800; color: #6B6259; text-transform: uppercase; letter-spacing: .07em">How far along?</span>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{pcts}}" as="p" hint-placeholder-count="4">
+<button onClick="{{p.pick}}" aria-pressed="{{p.pressed}}" style="border: 2px solid {{p.bd}}; background: {{p.bg}}; color: {{p.fg}}; height: 54px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0">
+<span style="font-weight: 800; font-size: 16px">{{p.label}}</span>
+<span style="font-size: 11px; font-weight: 700">{{p.sub}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 2px">
+<span style="font-size: 12.5px; color: #6B6259"><span style="font-weight: 800; background: #F4EFE6; border-radius: 6px; padding: 2px 6px; color: #2A2622">Enter</span> save   <span style="font-weight: 800; background: #F4EFE6; border-radius: 6px; padding: 2px 6px; color: #2A2622">Esc</span> close</span>
+<button onClick="{{save}}" style="background: #2F7F7A; color: #FFFFFF; border: 0; font-weight: 800; font-size: 15px; padding: 0 24px; height: 48px; border-radius: 14px">Save note</button>
+</div>
+<div aria-hidden="true" style="position: absolute; right: 70px; bottom: -8px; width: 18px; height: 18px; background: #FFFFFF; transform: rotate(45deg); border-radius: 3px"></div>
+</div>
+</sc-if>
+
+<sc-if value="{{showToast}}" hint-placeholder-val="{{ false }}">
+<div class="pop" style="position: absolute; right: 150px; bottom: 196px; width: 360px; box-sizing: border-box; background: #2A2622; color: #FFFFFF; border-radius: 18px; padding: 14px 16px; display: flex; gap: 12px; align-items: center; box-shadow: 0 18px 40px rgba(42,38,34,.25)">
+<svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30" style="flex-shrink: 0"><circle cx="15" cy="15" r="14" fill="#F5B83D"></circle><path d="M9 15.5l4 4 8-8.5" stroke="#2A2622" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-weight: 800; font-size: 14px">{{toastTitle}}</span>
+<span style="font-size: 13px; color: #DCD4C8">{{toastSub}}</span>
+</div>
+</div>
+</sc-if>
+
+<div style="position: absolute; left: 1000px; bottom: 48px; width: 130px; height: 140px; overflow: hidden">
+<button onClick="{{clickCapy}}" aria-label="Pong. Click to log what you are doing" style="position: absolute; left: 10px; bottom: 0; width: 110px; height: 110px; padding: 0; border: 0; background: transparent; transform: translateY({{capyY}}px); transition: transform .55s cubic-bezier(.3,1.45,.5,1)">
+<div class="{{bobClass}}">
+<dc-import name="Pong" mood="{{mood}}" size="110" hint-size="110px,110px"></dc-import>
+</div>
+</button>
+<svg aria-hidden="true" viewBox="0 0 130 14" width="130" height="14" style="position: absolute; left: 0; bottom: 0; pointer-events: none">
+<ellipse cx="62" cy="11" rx="48" ry="3.5" fill="#2A2622" opacity="0.12"></ellipse>
+<path d="M7 14 Q5 6 1 4 M7 14 Q9 7 13 5" stroke="#6BA368" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+<path d="M122 14 Q121 7 117 5 M122 14 Q124 8 128 7" stroke="#6BA368" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+</svg>
+</div>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: #F5F7F5; border-top: 1px solid #D2DCD6; display: flex; align-items: center; justify-content: center">
+<div aria-hidden="true" style="display: flex; gap: 6px; align-items: center">
+<div style="width: 38px; height: 38px; border-radius: 9px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; padding: 10px; box-sizing: border-box"><span style="background: #2F7F7A; border-radius: 2px"></span><span style="background: #2F7F7A; border-radius: 2px"></span><span style="background: #2F7F7A; border-radius: 2px"></span><span style="background: #2F7F7A; border-radius: 2px"></span></div>
+<div style="width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 18 18"><circle cx="8" cy="8" r="5.5" stroke="#4A433C" stroke-width="1.8" fill="none"></circle><path d="M12 12l4 4" stroke="#4A433C" stroke-width="1.8" stroke-linecap="round"></path></svg></div>
+<div style="width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center"><span style="width: 22px; height: 17px; border-radius: 3px; background: #F5B83D"></span></div>
+<div style="width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center"><span style="width: 20px; height: 20px; border-radius: 50%; background: #4F86C6"></span></div>
+<div style="width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: #E4EAE6; position: relative"><span style="width: 20px; height: 20px; border-radius: 5px; background: #6C63B8"></span><span style="position: absolute; bottom: 2px; left: 14px; width: 10px; height: 3px; border-radius: 2px; background: #6C63B8"></span></div>
+<div style="width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center"><span style="width: 20px; height: 16px; border-radius: 3px; background: #2E8B57"></span></div>
+</div>
+<div style="position: absolute; right: 12px; top: 0; bottom: 0; display: flex; align-items: center; gap: 10px">
+<button onClick="{{clickCapy}}" aria-label="Pong tray icon, {{count}} notes today" style="position: relative; width: 40px; height: 40px; border: 0; border-radius: 9px; background: transparent; display: flex; align-items: center; justify-content: center; padding: 0">
+<dc-import name="Pong" mood="peek" size="30" sprout="{{ false }}" hint-size="30px,30px"></dc-import>
+<span style="position: absolute; right: 1px; top: 2px; min-width: 16px; height: 16px; border-radius: 8px; background: #2F7F7A; color: #FFFFFF; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 3px; box-sizing: border-box">{{count}}</span>
+</button>
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M2 7a10 10 0 0 1 14 0M4.5 10a6.5 6.5 0 0 1 9 0M7 13a3 3 0 0 1 4 0" stroke="#4A433C" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M3 7h3l4-3v10l-4-3H3z" stroke="#4A433C" stroke-width="1.6" fill="none" stroke-linejoin="round"></path><path d="M13 6.5a4 4 0 0 1 0 5" stroke="#4A433C" stroke-width="1.6" fill="none" stroke-linecap="round"></path></svg>
+<div style="display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; line-height: 1.3; color: #2A2622; padding: 0 4px">
+<span>{{clock}}</span>
+<span>10/26/2026</span>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  state = { step: 'sleep', text: '', task: 'gis', pct: 75, count: 5, toast: null, morning: false, mIdx: 0, leave: 'rest', backlog: [], summary: [] };
+  timers = [];
+  after(fn, ms) { this.timers.push(setTimeout(fn, ms)); }
+  clearTimers() { this.timers.forEach((t) => clearTimeout(t)); this.timers = []; }
+  componentWillUnmount() { this.clearTimers(); }
+  renderVals() {
+    const s = this.state;
+    const go = (patch) => this.setState(patch);
+    const TASKS = [
+      { id: 'gis', short: 'GIS Location Map', duty: 'Frontend System Development and Enhancement', fn: 'Core' },
+      { id: 'api', short: 'Standardized API Response', duty: 'Frontend System Development and Enhancement', fn: 'Core' },
+      { id: 'bill', short: 'Billing Lookup API', duty: 'Frontend System Maintenance and Bug Resolution', fn: 'Core' },
+      { id: 'cpd', short: 'CPD Remarks Panel', duty: 'Frontend UI/UX Display fixes', fn: 'Core' },
+      { id: 'ppb', short: '2027 PPB presentation', duty: 'Assist in the preparation and documentation for planning and monitoring activities', fn: 'Support' }
+    ];
+    const MISSED = [
+      { long: 'Saturday, Oct 24', short: 'Sat', name: 'Saturday', title: 'Rest day on Saturday?', weekend: true },
+      { long: 'Sunday, Oct 25', short: 'Sun', name: 'Sunday', title: 'Rest day yesterday?', weekend: true }
+    ];
+    const LEAVES = [
+      { id: 'rest', label: 'Rest day', sub: 'Day off', cell: 'Rest Day' },
+      { id: 'sick', label: 'Sick leave', sub: 'Was sick', cell: 'Sick Leave' },
+      { id: 'personal', label: 'Personal leave', sub: 'Personal matter', cell: 'Personal Leave' }
+    ];
+    const cur = TASKS.find((t) => t.id === s.task) || TASKS[0];
+    const SUBS = { 25: 'started', 50: 'halfway', 75: 'almost', 100: 'done' };
+    const step = s.step;
+    const moodMap = { sleep: 'sleep', peek: 'peek', ask: 'ask', entry: 'listen', happy: 'happy', snooze: 'snooze', missedIntro: 'ask', missedQ: 'ask', missedType: 'listen', missedLog: 'listen' };
+    const yMap = { sleep: 15, snooze: 15, peek: 15, ask: 15, entry: 15, happy: 5, missedIntro: 15, missedQ: 15, missedType: 15, missedLog: 15 };
+    const day = MISSED[s.mIdx] || MISSED[0];
+    const leaveObj = LEAVES.find((l) => l.id === s.leave) || LEAVES[0];
+    const isMissedCard = step === 'missedQ' || step === 'missedType' || step === 'missedLog';
+
+    const close = () => { this.clearTimers(); go({ step: 'sleep' }); };
+    const save = () => {
+      this.clearTimers();
+      const n = s.count + 1;
+      go({ step: 'happy', text: '', count: n, toast: { title: 'Saved to ' + cur.short + ' · ' + s.pct + '%', sub: n + ' notes today · see you in about an hour' } });
+      this.after(() => go({ step: 'sleep' }), 1800);
+      this.after(() => go({ toast: null }), 3800);
+    };
+    const nextDay = (summary) => {
+      this.clearTimers();
+      if (s.mIdx + 1 < MISSED.length) {
+        go({ mIdx: s.mIdx + 1, step: 'missedQ', backlog: [], text: '', summary: summary, leave: 'rest' });
+        return;
+      }
+      go({ step: 'happy', mIdx: 0, backlog: [], text: '', summary: [], toast: { title: 'All caught up! Your DAR has no gaps.', sub: summary.join(' · ') } });
+      this.after(() => go({ step: 'sleep' }), 1900);
+      this.after(() => go({ toast: null }), 4600);
+    };
+    const addLog = () => {
+      const txt = s.text.trim();
+      if (!txt) return;
+      go({ backlog: s.backlog.concat([{ text: txt, task: cur.short, pct: s.pct }]), text: '' });
+    };
+    const doneLog = () => {
+      const txt = s.text.trim();
+      const list = txt ? s.backlog.concat([{ text: txt, task: cur.short, pct: s.pct }]) : s.backlog;
+      if (!list.length) return;
+      nextDay(s.summary.concat([day.short + ': ' + list.length + (list.length === 1 ? ' log added' : ' logs added')]));
+    };
+    const pending = s.backlog.length + (s.text.trim() ? 1 : 0);
+
+    return {
+      mood: moodMap[step] || 'sleep',
+      capyY: yMap[step] ?? 15,
+      bobClass: step === 'sleep' ? '' : 'bob',
+      clock: s.morning ? '8:06 AM' : '2:47 PM',
+      showAsk: step === 'ask',
+      showEntry: step === 'entry',
+      showMissedIntro: step === 'missedIntro',
+      showMissed: isMissedCard,
+      isMQ: step === 'missedQ',
+      isMType: step === 'missedType',
+      isMLog: step === 'missedLog',
+      showToast: !!s.toast && step !== 'entry' && step !== 'ask' && !isMissedCard && step !== 'missedIntro',
+      toastTitle: s.toast ? s.toast.title : '',
+      toastSub: s.toast ? s.toast.sub : '',
+      text: s.text,
+      count: s.count,
+      dutyLine: cur.fn + ' function · ' + cur.duty,
+      mCount: 'Missed day ' + (s.mIdx + 1) + ' of ' + MISSED.length,
+      mTitle: step === 'missedLog' ? 'What did you do on ' + day.name + '?' : (step === 'missedType' ? 'Off on ' + day.long : day.title),
+      mSub: step === 'missedLog' ? day.long + ' · add as many logs as you need' : day.long + ' · no notes logged',
+      mLogLabel: s.backlog.length ? 'Another one?' : 'One line per task',
+      leaveCell: leaveObj.cell,
+      hasBacklog: s.backlog.length > 0,
+      backlog: s.backlog,
+      doneLabel: pending ? 'Done with ' + day.name + ' (' + pending + ')' : 'Done with ' + day.name,
+      doneOp: pending ? 1 : 0.45,
+      leaveOpts: LEAVES.map((l) => {
+        const on = l.id === s.leave;
+        return {
+          label: l.label, sub: l.sub, pressed: on ? 'true' : 'false',
+          bg: on ? '#E3F1EF' : '#FFFFFF', fg: on ? '#1F5E5A' : '#2A2622', bd: on ? '#2F7F7A' : '#E3D8C8',
+          pick: () => go({ leave: l.id })
+        };
+      }),
+      tasks: TASKS.map((t) => {
+        const on = t.id === s.task;
+        return {
+          short: t.short, pressed: on ? 'true' : 'false',
+          bg: on ? '#E3F1EF' : '#FFFFFF', fg: on ? '#1F5E5A' : '#2A2622', bd: on ? '#2F7F7A' : '#E3D8C8',
+          pick: () => go({ task: t.id })
+        };
+      }),
+      pcts: [25, 50, 75, 100].map((v) => {
+        const on = v === s.pct;
+        return {
+          label: v + '%', sub: SUBS[v], pressed: on ? 'true' : 'false',
+          bg: on ? '#2F7F7A' : '#FFFFFF', fg: on ? '#FFFFFF' : '#2A2622', bd: on ? '#2F7F7A' : '#E3D8C8',
+          pick: () => go({ pct: v })
+        };
+      }),
+      simulate: () => {
+        this.clearTimers();
+        go({ step: 'peek', toast: null, morning: false });
+        this.after(() => go({ step: 'ask' }), 1100);
+      },
+      simulateMorning: () => {
+        this.clearTimers();
+        go({ step: 'peek', toast: null, morning: true, mIdx: 0, backlog: [], summary: [], text: '', leave: 'rest' });
+        this.after(() => go({ step: 'missedIntro' }), 1100);
+      },
+      reset: () => {
+        this.clearTimers();
+        go({ step: 'sleep', text: '', task: 'gis', pct: 75, count: 5, toast: null, morning: false, mIdx: 0, leave: 'rest', backlog: [], summary: [] });
+      },
+      clickCapy: () => { this.clearTimers(); go({ step: 'entry', toast: null }); },
+      tell: () => go({ step: 'entry' }),
+      startMissed: () => go({ step: 'missedQ' }),
+      mYes: () => go({ step: 'missedType', leave: day.weekend ? 'rest' : 'sick' }),
+      mNo: () => go({ step: 'missedLog', backlog: [], text: '' }),
+      mBack: () => go({ step: 'missedQ' }),
+      saveLeave: () => nextDay(s.summary.concat([day.short + ': ' + leaveObj.cell])),
+      addLog: addLog,
+      doneLog: doneLog,
+      closeMissed: () => {
+        this.clearTimers();
+        go({ step: 'sleep', toast: { title: "Okay, I'll ask again at your next check-in", sub: 'Missed days stay on my list until they are filled' } });
+        this.after(() => go({ toast: null }), 3600);
+      },
+      laterBtn: () => {
+        this.clearTimers();
+        go({ step: 'snooze', toast: { title: "Okay! I'll ask again in 15 minutes", sub: 'Snoozed' } });
+        this.after(() => go({ step: 'sleep' }), 1500);
+        this.after(() => go({ toast: null }), 3400);
+      },
+      onBreak: () => {
+        this.clearTimers();
+        go({ step: 'sleep', toast: { title: 'Enjoy your break!', sub: 'Pong will stay quiet for 30 minutes' } });
+        this.after(() => go({ toast: null }), 3200);
+      },
+      close: close,
+      save: save,
+      onText: (e) => go({ text: e.target.value }),
+      onKey: (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); save(); }
+        else if (e.key === 'Escape') { e.preventDefault(); close(); }
+      },
+      onBacklogKey: (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); addLog(); }
+        else if (e.key === 'Escape') { e.preventDefault(); close(); }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

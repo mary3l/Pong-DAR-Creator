@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pong's moods</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2F7F7A}a:hover{color:#1F5E5A}
+</style>
+</helmet>
+<div style="width: 1280px; height: 460px; box-sizing: border-box; padding: 36px 40px; background: #FFFCF7; font-family: 'Nunito', system-ui, sans-serif; color: #2A2622; display: flex; flex-direction: column; gap: 26px">
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 34px">Pong's moods</h2>
+<span style="font-size: 15px; color: #6B6259">One little turtle, six states. His head tells you what's happening.</span>
+</div>
+<div style="display: flex; gap: 10px; align-items: center">
+<sc-for list="{{swatches}}" as="w" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+<span style="width: 40px; height: 40px; border-radius: 12px; background: {{w.hex}}; border: 1px solid #E3D8C8"></span>
+<span style="font-size: 11px; font-weight: 700; color: #6B6259">{{w.name}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{moods}}" as="m" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="position: relative; height: 170px; border-radius: 18px; background: #DCEBE4; overflow: hidden">
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 16px; background: #F5F7F5; border-top: 1px solid #D2DCD6"></div>
+<svg aria-hidden="true" viewBox="0 0 120 10" width="120" height="10" style="position: absolute; left: 50%; margin-left: -64px; bottom: 13px">
+<ellipse cx="54" cy="6" rx="46" ry="3.5" fill="#2A2622" opacity="0.12"></ellipse>
+</svg>
+<div style="position: absolute; left: 50%; margin-left: -64px; bottom: 16px; width: 120px; height: 120px; transform: translateY({{m.y}}px)">
+<dc-import name="Pong" mood="{{m.mood}}" size="120" hint-size="120px,120px"></dc-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 19px">{{m.title}}</span>
+<span style="font-size: 11px; font-weight: 800; color: #1F5E5A; background: #E3F1EF; border-radius: 999px; padding: 2px 8px">{{m.tag}}</span>
+</div>
+<span style="font-size: 13.5px; color: #4A433C; line-height: 1.4">{{m.desc}}</span>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":460}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      swatches: [
+        { name: 'Shell', hex: '#5E9E6E' },
+        { name: 'Skin', hex: '#A9D69B' },
+        { name: 'Flower', hex: '#F5B83D' },
+        { name: 'Pond', hex: '#2F7F7A' },
+        { name: 'Mint', hex: '#DCEBE4' },
+        { name: 'Ink', hex: '#2A2622' }
+      ],
+      moods: [
+        { mood: 'sleep', y: 18, title: 'Napping', tag: 'default', desc: 'Head tucked in his shell. Click him anytime to log.' },
+        { mood: 'peek', y: 18, title: 'Peeking', tag: 'check-in', desc: 'Pokes his head halfway out first, so the check-in never startles you.' },
+        { mood: 'ask', y: 18, title: 'Asking', tag: 'bubble', desc: 'Head all the way out with "What are you up to?" Doesn\'t steal your focus.' },
+        { mood: 'listen', y: 18, title: 'Listening', tag: 'typing', desc: 'Head tilt and thinking dots while the entry box is open.' },
+        { mood: 'happy', y: 8, title: 'Happy', tag: 'saved', desc: 'A little hop and sparkles after you save, then he tucks back in.' },
+        { mood: 'snooze', y: 18, title: 'Drowsy', tag: 'later', desc: 'You picked Later. Sleepy eyes, then back in the shell for 15 min.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

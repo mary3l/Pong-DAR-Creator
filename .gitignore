@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+*.log
+.DS_Store
+
+# Your DAR workbook copies: personal data, keep them out of git
+docs/reference/*.xlsx
+~$*.xlsx
+*.pong-tmp.xlsx
+*.bak.xlsx

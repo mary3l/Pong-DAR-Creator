@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pong settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2F7F7A}a:hover{color:#1F5E5A}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #2F7F7A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 760px; height: 720px; box-sizing: border-box; background: #FFFCF7; font-family: 'Nunito', system-ui, sans-serif; color: #2A2622; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden">
+
+<div style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 18px; background: #FFFFFF; border-bottom: 1px solid #EFE6D6">
+<dc-import name="Pong" mood="peek" size="34" hint-size="34px,34px"></dc-import>
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 20px">Settings</span>
+</div>
+
+<div style="flex: 1; min-height: 0; display: flex">
+<div style="width: 200px; flex-shrink: 0; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; background: #FBF7F0; border-right: 1px solid #EFE6D6">
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+<button onClick="{{n.pick}}" aria-pressed="{{n.pressed}}" style="text-align: left; border: 0; background: {{n.bg}}; color: {{n.fg}}; font-weight: 800; font-size: 14px; padding: 0 14px; height: 44px; border-radius: 12px">{{n.label}}</button>
+</sc-for>
+</div>
+
+<div style="flex: 1; min-width: 0; padding: 22px 26px; display: flex; flex-direction: column; gap: 18px">
+
+<sc-if value="{{isCheckins}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 22px">Check-ins</span>
+<span style="font-size: 13.5px; color: #6B6259">When Pong pops out to ask what you're up to.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 800">Ask me every</span>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; background: #F4EFE6; padding: 4px; border-radius: 14px">
+<sc-for list="{{intervals}}" as="iv" hint-placeholder-count="4">
+<button onClick="{{iv.pick}}" aria-pressed="{{iv.pressed}}" style="border: 0; background: {{iv.bg}}; color: #2A2622; font-weight: 800; font-size: 14px; height: 40px; border-radius: 10px; box-shadow: {{iv.shadow}}">{{iv.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 800">Work hours</span>
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700">
+<span style="flex: 1; background: #FFFFFF; border: 2px solid #E3D8C8; border-radius: 12px; padding: 10px 12px; text-align: center">8:00 AM</span>
+<span style="color: #6B6259">to</span>
+<span style="flex: 1; background: #FFFFFF; border: 2px solid #E3D8C8; border-radius: 12px; padding: 10px 12px; text-align: center">5:00 PM</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 800">Lunch (Pong stays quiet)</span>
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700">
+<span style="flex: 1; background: #FFFFFF; border: 2px solid #E3D8C8; border-radius: 12px; padding: 10px 12px; text-align: center">12:00 PM</span>
+<span style="color: #6B6259">to</span>
+<span style="flex: 1; background: #FFFFFF; border: 2px solid #E3D8C8; border-radius: 12px; padding: 10px 12px; text-align: center">1:00 PM</span>
+</div>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 800">Work days</span>
+<div style="display: flex; gap: 6px">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<button onClick="{{d.pick}}" aria-pressed="{{d.pressed}}" aria-label="{{d.full}}" style="width: 52px; height: 44px; border-radius: 12px; border: 2px solid {{d.bd}}; background: {{d.bg}}; color: {{d.fg}}; font-weight: 800; font-size: 13px">{{d.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 16px">
+<sc-for list="{{checkToggles}}" as="t" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-top: {{t.border}}">
+<div style="display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 800">{{t.label}}</span>
+<span style="font-size: 12.5px; color: #6B6259">{{t.hint}}</span>
+</div>
+<button onClick="{{t.flip}}" aria-pressed="{{t.pressed}}" aria-label="{{t.label}}" style="flex-shrink: 0; width: 56px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center">
+<span style="width: 48px; height: 28px; border-radius: 999px; background: {{t.track}}; position: relative; display: block; transition: background .2s">
+<span style="position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,.25); transform: translateX({{t.x}}px); transition: transform .2s"></span>
+</span>
+</button>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isShortcuts}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 22px">Shortcuts</span>
+<span style="font-size: 13.5px; color: #6B6259">Work from any app, even when Pong is napping.</span>
+</div>
+<div style="display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 16px">
+<sc-for list="{{shortcuts}}" as="k" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-top: {{k.border}}">
+<span style="font-size: 14px; font-weight: 800">{{k.label}}</span>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="display: flex; gap: 4px">
+<sc-for list="{{k.keys}}" as="kc" hint-placeholder-count="3">
+<span style="font-size: 13px; font-weight: 800; background: #F4EFE6; border: 1px solid #E3D8C8; border-bottom-width: 3px; border-radius: 8px; padding: 4px 9px">{{kc}}</span>
+</sc-for>
+</div>
+<button style="border: 1px solid #E3D8C8; background: #FFFFFF; color: #2A2622; font-weight: 700; font-size: 13px; padding: 0 12px; height: 40px; border-radius: 10px">Change</button>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isDar}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 22px">DAR profile</span>
+<span style="font-size: 13.5px; color: #6B6259">Goes into the header and footer of every exported sheet.</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{fields}}" as="f" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 5px">
+<label for="{{f.id}}" style="font-size: 12.5px; font-weight: 800">{{f.label}}</label>
+<input id="{{f.id}}" type="text" value="{{f.value}}" onChange="{{f.change}}" style="height: 44px; box-sizing: border-box; border-radius: 12px; border: 2px solid #E3D8C8; padding: 0 12px; font-size: 14px; font-family: inherit; color: #2A2622; background: #FFFFFF">
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12.5px; font-weight: 800">Signatories</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<div style="background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 11.5px; font-weight: 800; color: #6B6259; text-transform: uppercase; letter-spacing: .06em">Confirmed by</span>
+<span style="font-size: 14px; font-weight: 800">Judith P. Marquez</span>
+<span style="font-size: 12.5px; color: #6B6259">Division Manager A</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 11.5px; font-weight: 800; color: #6B6259; text-transform: uppercase; letter-spacing: .06em">Noted by</span>
+<span style="font-size: 14px; font-weight: 800">Ariel L. Noble</span>
+<span style="font-size: 12.5px; color: #6B6259">Department Manager A</span>
+</div>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<div style="background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 12.5px; font-weight: 800">Cutoff periods</span>
+<div style="display: flex; gap: 6px">
+<span style="font-size: 13px; font-weight: 800; color: #1F5E5A; background: #E3F1EF; border-radius: 999px; padding: 4px 10px">3rd – 17th</span>
+<span style="font-size: 13px; font-weight: 800; color: #1F5E5A; background: #E3F1EF; border-radius: 999px; padding: 4px 10px">18th – 2nd</span>
+</div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="font-size: 12.5px; font-weight: 800">DAR workbook</span>
+<span style="font-size: 13px; color: #4A433C; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">Documents\DAR\MABANO_DAR.xlsx</span>
+</div>
+<button style="flex-shrink: 0; border: 1px solid #E3D8C8; background: #FFFFFF; color: #2A2622; font-weight: 700; font-size: 13px; padding: 0 12px; height: 40px; border-radius: 10px">Change</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isGeneral}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 22px">General</span>
+<span style="font-size: 13.5px; color: #6B6259">Startup, where Pong lives, and your data.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 800">Where Pong lives</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; background: #F4EFE6; padding: 4px; border-radius: 14px">
+<sc-for list="{{spots}}" as="sp" hint-placeholder-count="2">
+<button onClick="{{sp.pick}}" aria-pressed="{{sp.pressed}}" style="border: 0; background: {{sp.bg}}; color: #2A2622; font-weight: 800; font-size: 14px; height: 40px; border-radius: 10px; box-shadow: {{sp.shadow}}">{{sp.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 16px">
+<sc-for list="{{generalToggles}}" as="t" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-top: {{t.border}}">
+<div style="display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 800">{{t.label}}</span>
+<span style="font-size: 12.5px; color: #6B6259">{{t.hint}}</span>
+</div>
+<button onClick="{{t.flip}}" aria-pressed="{{t.pressed}}" aria-label="{{t.label}}" style="flex-shrink: 0; width: 56px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center">
+<span style="width: 48px; height: 28px; border-radius: 999px; background: {{t.track}}; position: relative; display: block; transition: background .2s">
+<span style="position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,.25); transform: translateX({{t.x}}px); transition: transform .2s"></span>
+</span>
+</button>
+</div>
+</sc-for>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 14px; font-weight: 800">Your data stays on this PC</span>
+<span style="font-size: 12.5px; color: #6B6259">%APPDATA%\Pong\pong.db · last backup today, 8:00 AM</span>
+</div>
+<div style="display: flex; gap: 8px">
+<button style="border: 1px solid #E3D8C8; background: #FFFFFF; color: #2A2622; font-weight: 700; font-size: 13px; padding: 0 12px; height: 40px; border-radius: 10px">Open folder</button>
+<button style="border: 0; background: #F5B83D; color: #2A2622; font-weight: 800; font-size: 13px; padding: 0 12px; height: 40px; border-radius: 10px">Back up now</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":720}}'>
+class Component extends DCLogic {
+  state = {
+    section: 'checkins',
+    interval: 60,
+    spot: 'taskbar',
+    days: { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false },
+    on: { random: true, idle: true, fullscreen: true, missed: true, autostart: true, anim: true },
+    profile: { name: 'Mariel G. Mabano', position: 'Information Systems Designer', dept: 'Corporate Planning Department', unit: 'Planning Unit', leader: 'Jade C. Veloso' }
+  };
+  renderVals() {
+    const s = this.state;
+    const go = (p) => this.setState(p);
+    const toggle = (key, label, hint, first) => {
+      const on = !!s.on[key];
+      return {
+        label: label, hint: hint, pressed: on ? 'true' : 'false',
+        track: on ? '#2F7F7A' : '#CFC4B3', x: on ? 20 : 0,
+        border: first ? 'none' : '1px solid #F1EADF',
+        flip: () => { const o = { ...s.on }; o[key] = !on; go({ on: o }); }
+      };
+    };
+    const seg = (on) => ({ bg: on ? '#FFFFFF' : 'transparent', shadow: on ? '0 1px 4px rgba(42,38,34,.12)' : 'none', pressed: on ? 'true' : 'false' });
+    const NAV = [
+      { id: 'checkins', label: 'Check-ins' },
+      { id: 'shortcuts', label: 'Shortcuts' },
+      { id: 'dar', label: 'DAR profile' },
+      { id: 'general', label: 'General' }
+    ];
+    const FULL = { Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday', Sun: 'Sunday' };
+    const FIELDS = [
+      { key: 'name', label: 'Name of JOE' },
+      { key: 'position', label: 'Position title' },
+      { key: 'dept', label: 'Department' },
+      { key: 'unit', label: 'Unit' },
+      { key: 'leader', label: 'Team leader' }
+    ];
+    return {
+      isCheckins: s.section === 'checkins',
+      isShortcuts: s.section === 'shortcuts',
+      isDar: s.section === 'dar',
+      isGeneral: s.section === 'general',
+      nav: NAV.map((n) => {
+        const on = n.id === s.section;
+        return { label: n.label, pressed: on ? 'true' : 'false', bg: on ? '#FFFFFF' : 'transparent', fg: on ? '#1F5E5A' : '#4A433C', pick: () => go({ section: n.id }) };
+      }),
+      intervals: [30, 45, 60, 90].map((m) => ({ ...seg(m === s.interval), label: m + ' min', pick: () => go({ interval: m }) })),
+      days: Object.keys(FULL).map((d) => {
+        const on = !!s.days[d];
+        return {
+          label: d, full: FULL[d], pressed: on ? 'true' : 'false',
+          bg: on ? '#E3F1EF' : '#FFFFFF', fg: on ? '#1F5E5A' : '#6B6259', bd: on ? '#2F7F7A' : '#E3D8C8',
+          pick: () => { const o = { ...s.days }; o[d] = !on; go({ days: o }); }
+        };
+      }),
+      checkToggles: [
+        toggle('random', 'Add a little randomness', 'Asks within ±15 min so it feels natural, not robotic', true),
+        toggle('idle', "Stay quiet when I'm away", 'Skips the check-in if you have been idle for 10+ minutes', false),
+        toggle('fullscreen', 'Stay quiet during full-screen apps', 'Presentations, meetings and videos', false),
+        toggle('missed', 'Ask about days with no notes', 'Next morning: rest day, sick or personal leave, or add logs', false)
+      ],
+      shortcuts: [
+        { label: 'Log a note now', keys: ['Ctrl', 'Alt', 'L'], border: 'none' },
+        { label: 'Open Pong (Today view)', keys: ['Ctrl', 'Alt', 'K'], border: '1px solid #F1EADF' },
+        { label: 'Pause check-ins for 1 hour', keys: ['Ctrl', 'Alt', 'P'], border: '1px solid #F1EADF' }
+      ],
+      fields: FIELDS.map((f) => ({
+        id: 'dar-' + f.key, label: f.label, value: s.profile[f.key],
+        change: (e) => { const p = { ...s.profile }; p[f.key] = e.target.value; go({ profile: p }); }
+      })),
+      spots: [
+        { id: 'taskbar', label: 'On the taskbar' },
+        { id: 'tray', label: 'Tray icon only' }
+      ].map((o) => ({ ...seg(o.id === s.spot), label: o.label, pick: () => go({ spot: o.id }) })),
+      generalToggles: [
+        toggle('autostart', 'Start with Windows', 'Pong wakes up when you log in', true),
+        toggle('anim', 'Animations', 'Bobbing, peeking and sparkles', false)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

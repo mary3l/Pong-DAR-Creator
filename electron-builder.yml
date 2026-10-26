@@ -1,0 +1,24 @@
+appId: ph.dcwd.pong
+productName: Pong
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!docs/*'
+  - '!{electron.vite.config,vitest.config}.{js,ts,mjs,mts,cjs}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{CLAUDE.md,README.md,.env,.env.*,.npmrc}'
+win:
+  target: nsis
+  executableName: Pong
+# Per-user install: no admin rights needed on the office PC.
+nsis:
+  oneClick: true
+  perMachine: false
+  artifactName: Pong-${version}-setup.${ext}
+  shortcutName: Pong
+  uninstallDisplayName: Pong
+  createDesktopShortcut: false
+npmRebuild: false

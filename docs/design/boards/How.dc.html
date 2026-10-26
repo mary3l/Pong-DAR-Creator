@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How Pong works</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2F7F7A}a:hover{color:#1F5E5A}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 40px; background: #FFFCF7; font-family: 'Nunito', system-ui, sans-serif; color: #2A2622; display: flex; flex-direction: column; gap: 28px">
+
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 34px">How Pong works</h2>
+<span style="font-size: 15px; color: #6B6259">From a one-line note to a signed DAR, without backtracking at cutoff.</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px">
+<sc-for list="{{steps}}" as="st" hint-placeholder-count="6">
+<div style="background: #FFFFFF; border: 1px solid #EFE6D6; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: #F5B83D; color: #2A2622; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center">{{st.n}}</span>
+<dc-import name="Pong" mood="{{st.mood}}" size="56" hint-size="56px,56px"></dc-import>
+</div>
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 18px; line-height: 1.2">{{st.title}}</span>
+<span style="font-size: 13.5px; color: #4A433C; line-height: 1.45">{{st.body}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px">
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 24px">Under the hood</span>
+<div style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{stack}}" as="sk" hint-placeholder-count="5">
+<span style="font-size: 12.5px; font-weight: 800; color: #1F5E5A; background: #E3F1EF; border-radius: 999px; padding: 5px 11px">{{sk}}</span>
+</sc-for>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px">
+<sc-for list="{{layers}}" as="l" hint-placeholder-count="3">
+<div style="background: {{l.bg}}; border-radius: 20px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 11.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: {{l.accent}}">{{l.kicker}}</span>
+<span style="font-family: 'Fredoka', 'Nunito', sans-serif; font-weight: 600; font-size: 20px">{{l.title}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{l.items}}" as="it" hint-placeholder-count="4">
+<div style="background: #FFFFFF; border-radius: 12px; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 13.5px; font-weight: 800">{{it.name}}</span>
+<span style="font-size: 12.5px; color: #4A433C; line-height: 1.35">{{it.what}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      steps: [
+        { n: 1, mood: 'sleep', title: 'Pong naps on your taskbar', body: 'He sits on top of the taskbar, head tucked in his shell. Click him anytime, or press Ctrl+Alt+L.' },
+        { n: 2, mood: 'peek', title: 'About every hour, he peeks out', body: 'Only in work hours. Skips lunch, idle time and full-screen apps.' },
+        { n: 3, mood: 'ask', title: 'You type one line', body: 'What you did, in your own words. Enter saves, Esc closes.' },
+        { n: 4, mood: 'listen', title: 'Tag the DAR task and %', body: 'Pick the MFO (last one is preselected) and tap 25, 50, 75 or 100%.' },
+        { n: 5, mood: 'happy', title: 'Your day fills itself in', body: 'Today shows every note. Cutoff shows the DAR grid filling up day by day.' },
+        { n: 6, mood: 'happy', title: 'Export at cutoff', body: 'Adds a new sheet to your DAR workbook with the same format, ready to sign.' }
+      ],
+      stack: ['Tauri v2', 'React + TypeScript', 'Rust', 'SQLite', 'umya-spreadsheet'],
+      layers: [
+        {
+          kicker: 'What you see', title: 'Windows', bg: '#FFF4DE', accent: '#7A4E0B',
+          items: [
+            { name: 'Pong window', what: 'Transparent, always on top, parked above the taskbar. Only Pong is clickable.' },
+            { name: 'Check-in popup', what: 'The bubble and entry card. Opens without stealing focus.' },
+            { name: 'Main window', what: 'Today, Cutoff (DAR) and Settings.' },
+            { name: 'Tray icon', what: 'Log now, Pause 1 hr, Open, Quit.' }
+          ]
+        },
+        {
+          kicker: 'Rust side', title: 'Brains', bg: '#E3F1EF', accent: '#1F5E5A',
+          items: [
+            { name: 'Scheduler', what: 'Random interval inside work hours, lunch and work days.' },
+            { name: 'Idle and full-screen check', what: 'Windows GetLastInputInfo plus foreground window size.' },
+            { name: 'Global hotkeys', what: 'Ctrl+Alt+L log, Ctrl+Alt+K open, Ctrl+Alt+P pause.' },
+            { name: 'Autostart', what: 'Starts with Windows, hidden in the tray.' }
+          ]
+        },
+        {
+          kicker: 'Local only', title: 'Your data', bg: '#EDE7F8', accent: '#4B3B7A',
+          items: [
+            { name: 'SQLite in %APPDATA%', what: 'profile, duties, outputs (MFOs), entries, day_status.' },
+            { name: 'Cutoff builder', what: 'Groups notes into Function, Duty, MFO and the highest % per day.' },
+            { name: 'DAR exporter', what: 'Copies the last sheet\'s formatting and fills in the new period.' },
+            { name: 'Backups', what: 'Daily copy of the database. Nothing leaves your PC.' }
+          ]
+        }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+:root {
+  --shell: #5e9e6e;
+  --skin: #a9d69b;
+  --flower: #f5b83d;
+  --teal: #2f7f7a;
+  --teal-dark: #1f5e5a;
+  --mint: #dcebe4;
+  --ink: #2a2622;
+  --muted: #6b6259;
+  --ground: #fffcf7;
+  --line: #efe6d6;
+  --field: #e3d8c8;
+
+  --font-head: 'Fredoka', 'Nunito', system-ui, sans-serif;
+  --font-body: 'Nunito', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+#root {
+  height: 100%;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-head);
+  font-weight: 600;
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--field);
+  background: #ffffff;
+  color: var(--ink);
+}
+
+button.primary {
+  border: 0;
+  background: var(--flower);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+input {
+  font: inherit;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 2px solid var(--field);
+  background: #ffffff;
+  color: var(--ink);
+}
+
+/* The pong window is transparent: only the turtle should show. */
+html[data-window='pong'],
+html[data-window='pong'] body {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
