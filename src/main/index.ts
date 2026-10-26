@@ -1,34 +1,38 @@
-import { app, ipcMain } from 'electron'
+// index.ts: the main process starts here (package.json "main" points at its build).
+// It runs once per launch, in Node, before any window exists.
+import { app } from 'electron'
 import { join } from 'node:path'
-import { isWindowLabel } from '../shared/windowLabel'
-import { createWindows, hideWindow, showWindow } from './windows'
+import { openDb } from './db'
+import { registerIpc } from './ipc'
+import { createWindows, showWindow } from './windows'
 
 // Dev runs keep their data apart from the installed app: %APPDATA%\Pong-dev vs %APPDATA%\Pong.
+// app.isPackaged is false under `npm run dev`, true in the installed app.
+// This must happen before the app is ready, while the userData path can still change.
 if (!app.isPackaged) {
   app.setPath('userData', join(app.getPath('appData'), 'Pong-dev'))
 }
 
-function registerIpc(): void {
-  // Arguments come from the renderer: check them before acting.
-  ipcMain.handle('window:show', (_event, label: unknown) => {
-    if (!isWindowLabel(label)) throw new Error(`Unknown window: ${String(label)}`)
-    showWindow(label)
-  })
-  ipcMain.handle('window:hide', (_event, label: unknown) => {
-    if (!isWindowLabel(label)) throw new Error(`Unknown window: ${String(label)}`)
-    hideWindow(label)
-  })
-}
-
 // Only one Pong: a second launch brings the first one's main window forward.
+// requestSingleInstanceLock() returns false if another Pong already holds the lock;
+// this copy then quits, and the first one gets a 'second-instance' event.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => showWindow('main'))
 
+  // whenReady(): Electron has finished starting up. Windows, IPC and most
+  // app.getPath() folders are only usable from here on.
   app.whenReady().then(() => {
-    app.setAppUserModelId('ph.dcwd.pong')
-    registerIpc()
+    app.setAppUserModelId('ph.dcwd.pong') // how Windows groups Pong's windows and notifications
+
+    // Open (or create) pong.db and run migrations, once, for the whole app.
+    const db = openDb(join(app.getPath('userData'), 'pong.db'))
+    // Close it cleanly when Pong quits, so WAL changes are merged into pong.db.
+    app.on('will-quit', () => db.close())
+
+    // Order matters: handlers must exist before any window can call window.pong.
+    registerIpc(db)
     createWindows()
   })
 }

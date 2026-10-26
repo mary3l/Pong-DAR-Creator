@@ -1,11 +1,41 @@
+// preload/index.ts: the bridge. Runs in the PRELOAD context: just before each window's
+// page loads, with access to a few Electron APIs (ipcRenderer) the page itself can't use.
+//
+// contextBridge.exposeInMainWorld('pong', api) makes `window.pong` exist in React.
+// The page gets ONLY these functions, never ipcRenderer itself. If it had ipcRenderer,
+// any bug or injected script in the UI could call any channel with any argument.
+//
+// Changes here need a restart of `npm run dev`; hot reload only covers the renderer.
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PongApi } from '../shared/api'
 
 // The only door from the renderer to the main process. Add one method per feature;
 // never expose ipcRenderer itself.
+// Typed as PongApi, so TypeScript errors if a method is missing or has the wrong arguments.
+// Each line forwards to one channel in main/ipc.ts. invoke() returns a Promise of the
+// handler's return value. Channel names must match ipc.ts exactly.
 const api: PongApi = {
   showWindow: (label) => ipcRenderer.invoke('window:show', label),
-  hideWindow: (label) => ipcRenderer.invoke('window:hide', label)
+  hideWindow: (label) => ipcRenderer.invoke('window:hide', label),
+
+  addEntry: (entry) => ipcRenderer.invoke('entries:add', entry),
+  entriesByDate: (date) => ipcRenderer.invoke('entries:byDate', date),
+  entriesInPeriod: (period) => ipcRenderer.invoke('entries:inPeriod', period),
+
+  listDuties: () => ipcRenderer.invoke('duties:list'),
+  addDuty: (category, title) => ipcRenderer.invoke('duties:add', category, title),
+  updateDuty: (id, changes) => ipcRenderer.invoke('duties:update', id, changes),
+  listOutputs: () => ipcRenderer.invoke('outputs:list'),
+  addOutput: (dutyId, title) => ipcRenderer.invoke('outputs:add', dutyId, title),
+  updateOutput: (id, changes) => ipcRenderer.invoke('outputs:update', id, changes),
+
+  getProfile: () => ipcRenderer.invoke('profile:get'),
+  setProfile: (changes) => ipcRenderer.invoke('profile:set', changes),
+  dayStatusInPeriod: (period) => ipcRenderer.invoke('dayStatus:inPeriod', period),
+  setDayStatus: (date, type) => ipcRenderer.invoke('dayStatus:set', date, type),
+
+  buildGrid: (period) => ipcRenderer.invoke('grid:build', period),
+  seedFromSample: () => ipcRenderer.invoke('dev:seed')
 }
 
 contextBridge.exposeInMainWorld('pong', api)
