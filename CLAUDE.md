@@ -9,7 +9,7 @@ Build guide: `docs/PHASES.md` (one phase per session, in order).
 ## Stack
 - Electron 44 + electron-vite 6 (Vite 8), React 19 + TypeScript, Node 24 LTS for tooling
 - Three processes: `main` (Node: windows, tray, DB, scheduler, Excel), `preload` (the only bridge), `renderer` (React, no Node access)
-- SQLite via better-sqlite3 in the main process (added in Phase 1). Settings: a small JSON file in userData (`src/main/settings.ts`), no extra package
+- SQLite via Node's built-in `node:sqlite` (`DatabaseSync`) in the main process: no native module to rebuild. Settings: a small JSON file in userData (`src/main/settings.ts`), no extra package
 - Excel: ExcelJS in the main process (added in Phase 2)
 - Built into Electron, no plugin needed: `Tray`, `Menu`, `globalShortcut`, `dialog`, `screen`, `powerMonitor`, `app.setLoginItemSettings` (autostart), `app.requestSingleInstanceLock`
 - Full-screen check: koffi (FFI) calling `SHQueryUserNotificationState` in shell32 (added in Phase 4)
@@ -28,12 +28,14 @@ Build guide: `docs/PHASES.md` (one phase per session, in order).
 ```
 src/
   main/              Node side
-    index.ts         app lifecycle, single instance, IPC handlers
+    index.ts         app lifecycle, single instance, opens the DB
+    ipc.ts           every ipcMain.handle, with argument checks
     windows.ts       create + show/hide the three windows
     tray.ts          tray icon + menu                 (Phase 3)
     shortcuts.ts     global hotkeys                   (Phase 3)
-    db.ts            better-sqlite3, migrations       (Phase 1)
+    db.ts            node:sqlite, migrations          (Phase 1)
     queries.ts       typed queries                    (Phase 1)
+    seed.ts          dev only: seed from the sample DAR (Phase 1)
     export.ts        DAR sheet writer (ExcelJS)       (Phase 2)
     scheduler.ts     check-in timer                   (Phase 4)
     idle.ts          idle, lock/sleep, full screen    (Phase 4)
@@ -44,6 +46,8 @@ src/
     index.d.ts       types for window.pong
   shared/            pure TS used by both sides, unit-tested
     windowLabel.ts   window label <-> ?window= query
+    api.ts           PongApi: the contract the preload implements
+    dates.ts         local dates as 'YYYY-MM-DD', UTC-safe math (Phase 1)
     cutoff.ts        period math + DAR grid builder   (Phase 1)
     types.ts         Entry, Duty, Output, DayStatus, Period ...
   renderer/
@@ -126,8 +130,9 @@ Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA use
 
 ## Electron rules
 - The renderer never gets Node. Every renderer -> main call is a named method on `window.pong` (preload), backed by `ipcMain.handle('<area>:<verb>')`. Validate every argument in main; never expose `ipcRenderer` itself.
-- Packages used by main (better-sqlite3, exceljs, koffi) go in `dependencies`; they ship in the installer. Renderer-only packages (react, fonts) go in `devDependencies`, since Vite bundles them.
-- better-sqlite3 is native: it must be rebuilt for Electron's ABI. `postinstall` runs `electron-builder install-app-deps`; if Electron fails with NODE_MODULE_VERSION, run `npx electron-builder install-app-deps`.
+- Packages used by main (exceljs, koffi) go in `dependencies`; they ship in the installer. Renderer-only packages (react, fonts) go in `devDependencies`, since Vite bundles them.
+- `db.ts`, `queries.ts` and `seed.ts` never import `electron`, so Vitest tests them with `openDb(':memory:')`. Paths from `app.getPath()` are passed in from `index.ts`/`ipc.ts`.
+- koffi (Phase 4) is the only native package; `postinstall` runs `electron-builder install-app-deps` for it.
 - Click-through: `win.setIgnoreMouseEvents(true, { forward: true })`; the renderer reports mouseenter/mouseleave on Pong's hitbox over IPC and main toggles it. No cursor polling.
 - Positions use `screen` DIPs (Electron handles DPI). Re-place on `display-metrics-changed`, `display-added`, `display-removed`.
 - Idle and lock: `powerMonitor.getSystemIdleTime()` (seconds), events `lock-screen`, `unlock-screen`, `suspend`, `resume`.

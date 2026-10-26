@@ -64,20 +64,22 @@ If `npm install` fails while downloading Electron (office proxy), set `ELECTRON_
 
 ## Phase 1 · Data layer — Oct 26 – Nov 1
 
+**Building it by hand?** Follow [manual/phase-1-data-layer.md](manual/phase-1-data-layer.md) instead of the prompt below: ten steps, every file explained, a check after each step.
+
 ```text
 Read CLAUDE.md. Phase 1: data layer. Plan first, and explain which process each piece runs in.
-- Add better-sqlite3 (and @types/better-sqlite3). Make sure it is rebuilt for Electron (postinstall install-app-deps) and marked external in the main build.
+- Use Node's built-in node:sqlite (DatabaseSync); no better-sqlite3. Keep db.ts and queries.ts free of electron imports so Vitest can test them in memory.
 - src/main/db.ts: open pong.db in userData, WAL mode, foreign keys on, migrations as an ordered array tracked with PRAGMA user_version, for the six tables in CLAUDE.md.
 - src/main/queries.ts: addEntry, entriesByDate, entriesInPeriod, duties and MFO CRUD, profile get/set, dayStatus get/set.
 - IPC: ipcMain.handle for each query, exposed on window.pong in the preload with types in index.d.ts. Validate arguments in main.
-- Seed script (scripts/seed.ts, run with `npm run seed`): read docs/reference/MABANO_DAR_sample.xlsx (sheet "October 3 - 17") with ExcelJS and seed profile, duties, MFOs and one entry per filled % cell.
+- src/main/seed.ts (dev only, triggered from a "Seed from sample DAR" button over IPC): read docs/reference/MABANO_DAR_sample.xlsx (sheet "October 3 - 17") with ExcelJS and seed profile, duties, MFOs and one entry per filled % cell.
 - src/shared/cutoff.ts (pure): periodFor(date), daysIn(period), sheetName(period), missedDays(today, entries, dayStatus), buildGrid(entries, duties, outputs, dayStatus).
 - Vitest: 17th/18th and 2nd/3rd edges, February, Dec 18 - Jan 2, weekend with work, missed days.
 - Add a temporary "DB check" panel in the main window that lists today's entries, so I can see IPC working end to end.
 Done when: tests pass and buildGrid on the seeded data reproduces every % and Rest Day of "October 3 - 17", with 12 days attended.
 ```
 
-You'll learn: native modules in Electron, IPC with `invoke`/`handle`, why the DB lives in main.
+You'll learn: IPC with `invoke`/`handle`, checking arguments in main, why the DB lives in main, testing SQL in memory.
 
 ## Phase 2 · DAR export — Nov 2–8
 
@@ -157,7 +159,7 @@ Read CLAUDE.md. Phase 7: Settings, first run, backups. Plan first.
 - Settings in the main window with Check-ins, Shortcuts, DAR profile, General, as in docs/design/boards/Settings.dc.html. Store them in src/main/settings.ts (JSON in userData, written atomically), not a new package.
 - First run: profile form + pick the DAR workbook (dialog.showOpenDialog in main).
 - Autostart toggle via app.setLoginItemSettings with a --hidden arg; when started hidden, only the tray and Pong show. Missed-day question toggle.
-- Daily SQLite backup with db.backup() into userData/backups, keep 14; "Back up now" and "Open folder" buttons. A log file in userData/logs for debugging.
+- Daily SQLite backup with backup() from node:sqlite into userData/backups, keep 14; "Back up now" and "Open folder" buttons. A log file in userData/logs for debugging.
 Done when: a fresh install goes from first run to first check-in without editing any file.
 ```
 
@@ -180,7 +182,7 @@ Unsigned installers trigger SmartScreen ("More info -> Run anyway"). Check with 
 
 | Dev plan (Tauri) | Electron |
 |---|---|
-| `tauri-plugin-sql` | better-sqlite3 in main |
+| `tauri-plugin-sql` | `node:sqlite` (built into Electron's Node) in main |
 | `tauri-plugin-global-shortcut` | `globalShortcut` |
 | `tauri-plugin-autostart` | `app.setLoginItemSettings` |
 | `tauri-plugin-store` | JSON file in `app.getPath('userData')` |
