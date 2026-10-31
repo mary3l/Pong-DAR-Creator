@@ -1,0 +1,157 @@
+/* help.css: the "How to use" tab. Steps strip from docs/design/boards/How.dc.html. */
+
+.help {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  max-width: 1100px;
+}
+
+.help-toc {
+  position: sticky;
+  top: 0;
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #f4efe6;
+  border-radius: 16px;
+  padding: 6px;
+}
+
+.help-toc button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 13.5px;
+  min-height: 36px;
+  height: auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: #4a433c;
+}
+
+.help-toc button:hover {
+  background: #ffffff;
+}
+
+.help-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.help-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.help-step {
+  padding: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.help-step b {
+  font-size: 14px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.help-step span {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.help-section {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-margin-top: 8px;
+}
+
+.help-section h3 {
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.help-section p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.help-section ol,
+.help-section ul {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.help-tip {
+  background: #e3f1ef;
+  color: #173f3c;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.help-warn {
+  background: #fff1d6;
+  color: #5a3a08;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.help-table {
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.help-table td {
+  padding: 8px 12px 8px 0;
+  border-top: 1px solid #f1eadf;
+  vertical-align: top;
+  line-height: 1.45;
+}
+
+.help-table tr:first-child td {
+  border-top: 0;
+}
+
+.help-table td:first-child {
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.help code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12.5px;
+  background: #f4efe6;
+  border-radius: 6px;
+  padding: 1px 5px;
+  word-break: break-all;
+}
+
+@media (max-width: 900px) {
+  .help-toc {
+    display: none;
+  }
+  .help-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
