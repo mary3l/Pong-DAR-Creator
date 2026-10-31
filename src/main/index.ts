@@ -58,9 +58,11 @@ if (!app.requestSingleInstanceLock()) {
     startBackups(db, join(userData, 'backups'))
 
     // "Start with Windows": a login item that runs Pong with --hidden. Only for the
-    // installed app; under npm run dev it would register electron.exe instead.
+    // installed app (under npm run dev it would register electron.exe instead), and only
+    // once the first run is done, where you choose it.
     const applyAutostart = (): void => {
-      if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: getSettings().autostart, args: ['--hidden'] })
+      const s = getSettings()
+      if (app.isPackaged && s.setupDone) app.setLoginItemSettings({ openAtLogin: s.autostart, args: ['--hidden'] })
     }
     applyAutostart()
     events.on('settings-changed', applyAutostart)

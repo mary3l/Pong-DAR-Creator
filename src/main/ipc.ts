@@ -103,19 +103,22 @@ function gridFor(db: DatabaseSync, period: Period): DarGrid {
   )
 }
 
-// Phase 2: exports go ONLY into a copy of the sample, %TEMP%\Pong\MABANO_DAR_copy.xlsx.
-// The first export makes the copy; later ones add to it. Delete it to start fresh.
-// Phase 8 switches this to your real workbook (profile.workbookPath).
-function exportTargetPath(): string {
+// Where exports go.
+//   Installed app: your DAR workbook (profile.workbookPath, chosen in first run or Settings).
+//     export.ts never edits it in place: temp file, re-open check, .bak, then replace.
+//   npm run dev: a copy of the sample, %TEMP%\Pong\MABANO_DAR_copy.xlsx, so development
+//     never touches the real workbook. Delete the copy to start fresh.
+function exportTargetPath(db: DatabaseSync): string | null {
+  if (app.isPackaged) return q.getProfile(db).workbookPath
   return join(app.getPath('temp'), 'Pong', 'MABANO_DAR_copy.xlsx')
 }
 
-async function exportTarget(): Promise<string> {
-  const sample = join(app.getAppPath(), 'docs/reference/MABANO_DAR_sample.xlsx')
-  const path = exportTargetPath()
-  const dir = join(path, '..')
-  if (!existsSync(path)) {
-    await mkdir(dir, { recursive: true }) // recursive: no error if it already exists
+async function exportTarget(db: DatabaseSync): Promise<string> {
+  const path = exportTargetPath(db)
+  if (!path) throw new Error('Choose your DAR workbook first (Settings, DAR profile).')
+  if (!app.isPackaged && !existsSync(path)) {
+    const sample = join(app.getAppPath(), 'docs/reference/MABANO_DAR_sample.xlsx')
+    await mkdir(join(path, '..'), { recursive: true }) // recursive: no error if it already exists
     await copyFile(sample, path)
   }
   return path
@@ -254,9 +257,8 @@ export function registerIpc(db: DatabaseSync): void {
   ipcMain.handle('dar:export', async (_e, period: unknown, replace: unknown) => {
     check(isCutoff(period), 'period')
     check(typeof replace === 'boolean', 'replace')
-    if (app.isPackaged) throw new Error('Export is only available in development until Phase 8')
     const grid = gridFor(db, period)
-    const result = await exportDar(await exportTarget(), grid, q.getProfile(db), {
+    const result = await exportDar(await exportTarget(db), grid, q.getProfile(db), {
       submitted: localDate(),
       replace
     })
@@ -266,8 +268,8 @@ export function registerIpc(db: DatabaseSync): void {
   })
   // Where exports go, for the button's label: "Add sheet to MABANO_DAR.xlsx".
   ipcMain.handle('dar:target', () => {
-    const path = exportTargetPath()
-    return { name: basename(path), exists: existsSync(path) }
+    const path = exportTargetPath(db)
+    return { name: path ? basename(path) : 'your workbook', exists: path !== null && existsSync(path) }
   })
   ipcMain.handle('dar:lastExport', (_e, period: unknown) => {
     check(isCutoff(period), 'period')
@@ -276,7 +278,9 @@ export function registerIpc(db: DatabaseSync): void {
   // shell = Electron's way to open files with their usual app (Excel for .xlsx).
   // Main picks the file; the renderer can't name one.
   ipcMain.handle('dar:open', async () => {
-    const error = await shell.openPath(lastResult?.path ?? exportTargetPath())
+    const path = lastResult?.path ?? exportTargetPath(db)
+    if (!path) throw new Error('Choose your DAR workbook first (Settings, DAR profile).')
+    const error = await shell.openPath(path)
     if (error) throw new Error(error)
   })
   // Undo the last export: put the .bak back. Only right after an export, this session.

@@ -1,7 +1,7 @@
 {
   "name": "pong-dar",
   "productName": "Pong",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "description": "Pong the turtle asks what you're up to and fills in your DAR.",
   "author": "Mariel G. Mabano",

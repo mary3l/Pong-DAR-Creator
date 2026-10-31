@@ -64,6 +64,7 @@ export function startScheduler(db: DatabaseSync): void {
   database = db
   const step = (): void => {
     const s = getSettings()
+    if (!s.setupDone) return // no check-ins before the first-run form is done
     const next = tick(
       {
         now: new Date(),

@@ -7,9 +7,14 @@ files:
   - '!**/.vscode/*'
   - '!src/*'
   - '!docs/*'
+  - '!scripts/*'
   - '!{electron.vite.config,vitest.config}.{js,ts,mjs,mts,cjs}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
   - '!{CLAUDE.md,README.md,.env,.env.*,.npmrc}'
+# koffi's native binary (koffi.node) must be a real file on disk, not inside app.asar,
+# for Windows to load it.
+asarUnpack:
+  - '**/*.node'
 win:
   target: nsis
   executableName: Pong

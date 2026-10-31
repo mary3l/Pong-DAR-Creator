@@ -22,41 +22,51 @@ Build guide: `docs/PHASES.md` (one phase per session, in order).
 - `npm test`: Vitest
 - `npm run typecheck`: tsc for main/preload and renderer
 - `npm run build`: typecheck + bundle to `out/`
-- `npm run dist`: build + NSIS installer in `dist/`
+- `npm run dist`: build + NSIS installer in `dist/` (Pong-<version>-setup.exe)
+- `npm run icons`: regenerate the PNG icons from build/pong.svg
 
 ## Layout
 ```
 src/
   main/              Node side
-    index.ts         app lifecycle, single instance, opens the DB
+    index.ts         app lifecycle, single instance, opens the DB, --hidden start
     ipc.ts           every ipcMain.handle, with argument checks
-    windows.ts       create + show/hide the three windows
-    tray.ts          tray icon + menu                 (Phase 3)
-    shortcuts.ts     global hotkeys                   (Phase 3)
-    db.ts            node:sqlite, migrations          (Phase 1)
-    queries.ts       typed queries                    (Phase 1)
-    seed.ts          dev only: seed from the sample DAR (Phase 1)
-    export.ts        DAR sheet writer (ExcelJS)       (Phase 2)
-    scheduler.ts     check-in timer                   (Phase 4)
-    idle.ts          idle, lock/sleep, full screen    (Phase 4)
-    placement.ts     park the pong window on the taskbar (Phase 6)
-    settings.ts      JSON settings in userData        (Phase 7)
+    windows.ts       create + show/hide the three windows, hide on close, check-in opener
+    events.ts        in-main event bus (entry-saved, settings-changed ...)
+    tray.ts          tray icon + menu
+    shortcuts.ts     global hotkeys
+    db.ts            node:sqlite, migrations
+    queries.ts       typed queries
+    seed.ts          dev only: seed from the sample DAR
+    workbook.ts      first run: read duties, MFOs, header from the newest sheet (read only)
+    export.ts        DAR sheet writer (ExcelJS), undo from .bak
+    scheduler.ts     check-in clock + pause/snooze (rules in shared/schedule.ts)
+    pong.ts          Pong's mood and bubble, pushed to the pong window
+    idle.ts          idle, lock/sleep, full screen (koffi)
+    placement.ts     park the pong window on the taskbar (math in shared/placement.ts)
+    settings.ts      JSON settings in userData
+    backup.ts        daily pong.db backup, keep 14
+    log.ts           console -> userData/logs/pong-YYYY-MM-DD.log
   preload/
     index.ts         contextBridge: window.pong API (the ONLY renderer -> main path)
     index.d.ts       types for window.pong
   shared/            pure TS used by both sides, unit-tested
     windowLabel.ts   window label <-> ?window= query
     api.ts           PongApi: the contract the preload implements
-    dates.ts         local dates as 'YYYY-MM-DD', UTC-safe math (Phase 1)
-    cutoff.ts        period math + DAR grid builder   (Phase 1)
-    types.ts         Entry, Duty, Output, DayStatus, Period ...
+    dates.ts         local dates as 'YYYY-MM-DD', UTC-safe math
+    cutoff.ts        period math, DAR grid builder, missed-day wording
+    schedule.ts      "is a check-in due?" (tick)
+    settings.ts      Settings type, defaults, validation
+    placement.ts     taskbar edge + pong window bounds
+    types.ts         Entry, Duty, Output, DayStatus, Period, PongState ...
   renderer/
     index.html       one page for all three windows
     src/main.tsx     picks the screen from ?window=pong|checkin|main
-    src/windows/pong/      turtle + bubble
-    src/windows/checkin/   entry card
-    src/windows/main/      Today, Cutoff, Settings
-    src/components/Pong.tsx
+    src/windows/pong/      turtle + bubble + toasts, click-through hover reports
+    src/windows/checkin/   entry card, missed-day card
+    src/windows/main/      first run, Today, Cutoff, Tasks, Settings
+    src/components/        Pong.tsx, TaskPicker, PercentPicker, useTasks
+scripts/make-icons.mjs  npm run icons: build/pong.svg -> build/icon.png, tray.png, tray@2x.png
 docs/reference/MABANO_DAR_sample.xlsx   read-only copy of the real workbook
 docs/design/Pong.tsx                    turtle reference
 docs/design/boards/*.dc.html            design boards (markup is the spec; see docs/design/README.md)
@@ -96,7 +106,7 @@ Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA use
 - Cell value = MAX(progress) for that MFO on that date, written as a number (0.25 ... 1) with format 0%.
 - Day off = a day_status row, or a weekend date with no notes. It becomes one merged cell down the whole function block for that day, text "Rest Day", "Sick Leave", "Personal Leave" or "Holiday". A weekend with notes is a normal work day.
 - Days attended = dates in the period with at least one note, excluding day_status dates. The sample's Oct 3-17 gives 12.
-- Missed day = a past date in the current period with no notes and no day_status row.
+- Missed day = a past date in the current period with no notes and no day_status row, on or after settings.startedOn (the first-run date).
 - work_date is the local date (Asia/Manila), never UTC. Never use `toISOString().slice(0, 10)` for it.
 
 ## DAR sheet format (from "October 3 - 17" in the sample)
@@ -117,7 +127,7 @@ Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA use
 - Template = the newest sheet in the workbook. ExcelJS has no sheet clone: copy it into a new worksheet (cell values, styles, merges, column widths, row heights, page setup, print area), then rename.
 - Never edit the workbook in place: write <name>.pong-tmp.xlsx, re-open it with ExcelJS to verify, keep <name>.bak.xlsx, then replace.
 - If the workbook is locked (open in Excel: opening it for writing fails with EBUSY/EPERM), stop and say so.
-- Until Phase 8, export only into a copy (docs/reference or %TEMP%).
+- The installed app exports into profile.workbookPath (picked in first run or Settings). `npm run dev` always exports into %TEMP%\Pong\MABANO_DAR_copy.xlsx, never the real workbook.
 
 ## UX rules
 - Automatic check-ins never take keyboard focus. The bubble lives in the pong window (focusable false, shown with `showInactive()`); checkin is shown and focused only after a click or hotkey.
