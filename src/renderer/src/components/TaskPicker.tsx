@@ -1,8 +1,9 @@
 // TaskPicker.tsx: "Which DAR task?" Five recent MFOs as chips, plus "+ New task",
-// which opens a small panel: pick any other MFO, or add a new one under a duty.
-// Runs in the RENDERER; new MFOs are saved through window.pong.addOutput (main).
+// which opens a small panel: pick any other MFO, or add a new one under a duty (or
+// under a new duty, picked as "+ New duty" in A.) or B.)).
+// Runs in the RENDERER; new duties and MFOs are saved through window.pong (main).
 import { useState, type KeyboardEvent } from 'react'
-import type { Output } from '../../../shared/types'
+import type { Category, Output } from '../../../shared/types'
 import { dutyLine, type Tasks } from './useTasks'
 
 export default function TaskPicker(props: {
@@ -12,7 +13,9 @@ export default function TaskPicker(props: {
 }) {
   const { tasks, value, onChange } = props
   const [open, setOpen] = useState(false)
-  const [dutyId, setDutyId] = useState<number | ''>('')
+  // A duty's id, or 'new-core' / 'new-support' to add a duty first. '' = nothing picked.
+  const [dutyId, setDutyId] = useState<number | 'new-core' | 'new-support' | ''>('')
+  const [dutyTitle, setDutyTitle] = useState('')
   const [title, setTitle] = useState('')
   const [error, setError] = useState('')
 
@@ -23,17 +26,29 @@ export default function TaskPicker(props: {
   const activeDuties = tasks.duties.filter((d) => !d.archived)
   const others = tasks.outputs.filter((o) => o.status === 'active' && activeDuties.some((d) => d.id === o.dutyId))
 
+  // With no duties yet, there's nothing to pick: start with a new A.) duty.
+  const duty = dutyId === '' && activeDuties.length === 0 ? 'new-core' : dutyId
+  const newDuty = duty === 'new-core' || duty === 'new-support'
+
   async function create() {
-    if (dutyId === '' || !title.trim()) {
-      setError('Pick a duty and type the task name.')
+    if (duty === '' || !title.trim() || (newDuty && !dutyTitle.trim())) {
+      setError(newDuty ? 'Type the duty and the task name.' : 'Pick a duty and type the task name.')
       return
     }
-    const output = await window.pong.addOutput(dutyId, title.trim())
-    await tasks.reload()
-    onChange(output.id)
-    setTitle('')
-    setError('')
-    setOpen(false)
+    try {
+      const category: Category = duty === 'new-support' ? 'support' : 'core'
+      const parentId = newDuty ? (await window.pong.addDuty(category, dutyTitle.trim())).id : (duty as number)
+      const output = await window.pong.addOutput(parentId, title.trim())
+      await tasks.reload()
+      onChange(output.id)
+      setTitle('')
+      setDutyTitle('')
+      setDutyId('')
+      setError('')
+      setOpen(false)
+    } catch (e) {
+      setError(String(e).replace(/^.*Error: /, ''))
+    }
   }
 
   // Enter in the title box adds the task; it must not also save the whole note.
@@ -95,10 +110,14 @@ export default function TaskPicker(props: {
           <span className="hint">Or add a new task (MFO):</span>
           <select
             aria-label="Duty"
-            value={dutyId}
-            onChange={(e) => setDutyId(e.target.value === '' ? '' : Number(e.target.value))}
+            value={duty}
+            onChange={(e) => {
+              const v = e.target.value
+              setDutyId(v === '' || v === 'new-core' || v === 'new-support' ? v : Number(v))
+            }}
           >
             <option value="">Under which duty?</option>
+            {/* The group headings (A.), B.)) can't be picked; "+ New duty" under each can. */}
             <optgroup label="A.) Specific duties">
               {activeDuties
                 .filter((d) => d.category === 'core')
@@ -107,6 +126,7 @@ export default function TaskPicker(props: {
                     {d.title}
                   </option>
                 ))}
+              <option value="new-core">+ New duty in A.) Specific duties…</option>
             </optgroup>
             <optgroup label="B.) Support functions">
               {activeDuties
@@ -116,8 +136,19 @@ export default function TaskPicker(props: {
                     {d.title}
                   </option>
                 ))}
+              <option value="new-support">+ New duty in B.) Support functions…</option>
             </optgroup>
           </select>
+          {newDuty && (
+            <input
+              aria-label="New duty name"
+              placeholder={duty === 'new-core' ? 'New duty, e.g. Frontend UI/UX Display fixes' : 'New support function'}
+              value={dutyTitle}
+              maxLength={300}
+              onChange={(e) => setDutyTitle(e.target.value)}
+              onKeyDown={onTitleKey}
+            />
+          )}
           <div className="row">
             <input
               aria-label="New task name"
@@ -132,7 +163,9 @@ export default function TaskPicker(props: {
             </button>
           </div>
           {activeDuties.length === 0 && (
-            <span className="hint">No duties yet: add them in Pong's main window (Cutoff, Manage tasks).</span>
+            <span className="hint">
+              No duties yet. Type one above, or load them from your DAR workbook: Settings, DAR profile, Choose….
+            </span>
           )}
           {error && <span className="error">{error}</span>}
         </div>

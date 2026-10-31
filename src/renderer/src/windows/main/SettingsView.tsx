@@ -246,7 +246,9 @@ export function ProfileSettings(props: { compact?: boolean }) {
       if (!r) return
       setProfile(await window.pong.getProfile())
       setMessage(
-        `Read "${r.sheetName}" from ${r.name}: ${r.duties} new ${r.duties === 1 ? 'duty' : 'duties'}, ${r.outputs} new ${r.outputs === 1 ? 'task' : 'tasks'}.`
+        `Read "${r.sheetName}" from ${r.name}: ${r.duties} new ${r.duties === 1 ? 'duty' : 'duties'}, ` +
+          `${r.outputs} unfinished ${r.outputs === 1 ? 'task' : 'tasks'} added` +
+          (r.finished ? ` (${r.finished} already at 100% left out).` : '.')
       )
     } catch (e) {
       setMessage(String(e).replace(/^.*Error: /, ''))

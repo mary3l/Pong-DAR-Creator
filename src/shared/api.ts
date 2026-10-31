@@ -66,7 +66,7 @@ export interface PongApi {
   onDataChanged(callback: () => void): () => void // notes or days off changed somewhere
 
   // Settings (Phase 7)
-  pickWorkbook(): Promise<{ name: string; sheetName: string; duties: number; outputs: number } | null> // null = cancelled
+  pickWorkbook(): Promise<{ name: string; sheetName: string; duties: number; outputs: number; finished: number } | null> // null = cancelled
   backupNow(): Promise<{ path: string; at: number }>
   backupInfo(): Promise<{ last: number | null }>
   openDataFolder(): Promise<void>

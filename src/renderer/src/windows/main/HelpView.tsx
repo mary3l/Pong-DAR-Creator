@@ -101,7 +101,9 @@ export default function HelpView() {
           <ol>
             <li>
               Click <b>Choose…</b> and pick your DAR workbook (the .xlsx you submit). Pong reads its newest sheet and
-              fills in your duties, tasks (MFOs), header and signatories. It only reads the file here.
+              fills in your duties, header and signatories, plus the tasks (MFOs) that aren't at 100% yet: a task
+              whose last % on that sheet is 100% is finished and stays out. It only reads the file here. Already set
+              up? Settings, DAR profile, DAR workbook: <b>Change</b> does the same any time.
             </li>
             <li>
               Check your details: Name of JOE, position, department, unit, team leader, and who confirms and notes your

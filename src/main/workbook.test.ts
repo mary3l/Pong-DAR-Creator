@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { openDb } from './db'
 import * as q from './queries'
-import { importFromWorkbook, newestSheetName } from './workbook'
+import { importFromWorkbook, latestProgress, newestSheetName } from './workbook'
 
 const SAMPLE = 'docs/reference/MABANO_DAR_sample.xlsx'
 
@@ -18,8 +18,13 @@ describe.skipIf(!existsSync(SAMPLE))('importFromWorkbook', () => {
     q.setProfile(db, { name: 'Typed in Settings' })
 
     const first = await importFromWorkbook(db, SAMPLE)
-    expect(first).toEqual({ sheetName: 'October 3 - 17', duties: 4, outputs: 10 })
+    // 9 of the 10 MFOs end the cutoff at 100%; only the PPB presentation (100% on
+    // Oct 3, then 50% on Oct 13) is still open.
+    expect(first).toEqual({ sheetName: 'October 3 - 17', duties: 4, outputs: 1, finished: 9 })
     expect(q.listDuties(db).map((d) => d.category)).toEqual(['core', 'core', 'core', 'support'])
+    expect(q.listOutputs(db).map((o) => o.title)).toEqual([
+      '2026 Performance and 2027 Plan, Programs and Budget presentation to the Board 2026 PPT'
+    ])
     const profile = q.getProfile(db)
     expect(profile.name).toBe('Typed in Settings') // never overwritten
     expect(profile.position).toBe('Information Systems Designer')
@@ -27,6 +32,14 @@ describe.skipIf(!existsSync(SAMPLE))('importFromWorkbook', () => {
     expect(q.entriesInPeriod(db, { start: '2026-10-03', end: '2026-10-17' })).toEqual([]) // no notes
 
     expect(await importFromWorkbook(db, SAMPLE)).toMatchObject({ duties: 0, outputs: 0 })
-    expect(q.listOutputs(db)).toHaveLength(10)
+    expect(q.listOutputs(db)).toHaveLength(1)
   }, 30_000)
+})
+
+describe('latestProgress', () => {
+  it('is the % on the last filled day', () => {
+    expect(latestProgress([0.5, null, 1, null])).toBe(1)
+    expect(latestProgress([1, null, 0.5])).toBe(0.5)
+    expect(latestProgress([null, null])).toBeNull()
+  })
 })

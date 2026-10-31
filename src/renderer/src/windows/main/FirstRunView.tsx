@@ -32,8 +32,8 @@ export default function FirstRunView(props: { onDone: () => void }) {
         <div className="settings-body">
           <b>Choose your DAR workbook, then check your details</b>
           <span className="muted" style={{ fontSize: 13.5 }}>
-            Pong reads the newest sheet for your duties, tasks (MFOs), header and signatories. It doesn't change the
-            workbook now; sheets are only added when you export.
+            Pong reads the newest sheet for your duties, header and signatories, and the tasks (MFOs) not yet at
+            100%. It doesn't change the workbook now; sheets are only added when you export.
           </span>
           <ProfileSettings compact />
         </div>
