@@ -97,15 +97,18 @@ export function missedQuestion(date: string, today: string): string {
 // Past days in today's period with no notes and no day_status row: Pong asks about these.
 // Pick<Entry, 'workDate'> = "any object with at least a workDate", so callers can pass
 // full entries or just { workDate } in tests.
+// `since` ('YYYY-MM-DD', optional): the day you set Pong up. Days before it are never
+// "missed": Pong wasn't there to ask.
 export function missedDays(
   today: string,
   entries: Pick<Entry, 'workDate'>[],
-  dayStatus: DayStatus[]
+  dayStatus: DayStatus[],
+  since = ''
 ): string[] {
   // A Set answers "is this date in here?" instantly, without scanning a list each time.
   const logged = new Set(entries.map((e) => e.workDate))
   const marked = new Set(dayStatus.map((s) => s.date))
-  return daysIn(periodFor(today)).filter((d) => d < today && !logged.has(d) && !marked.has(d))
+  return daysIn(periodFor(today)).filter((d) => d >= since && d < today && !logged.has(d) && !marked.has(d))
 }
 
 // ---------------------------------------------------------------------------

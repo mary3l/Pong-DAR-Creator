@@ -55,7 +55,7 @@ export function askNow(): void {
   const today = localDate()
   const period = periodFor(today)
   const missed = getSettings().askMissedDays
-    ? missedDays(today, q.entriesInPeriod(database, period), q.dayStatusInPeriod(database, period))
+    ? missedDays(today, q.entriesInPeriod(database, period), q.dayStatusInPeriod(database, period), getSettings().startedOn)
     : []
   ask(missed)
 }

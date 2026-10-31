@@ -11,17 +11,19 @@
 // Arguments come from a web page, so check each one before it reaches the database.
 // Treat them like input from the internet: TypeScript types vanish at runtime, so
 // nothing stops a buggy renderer from sending { text: 42 }.
-import { app, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
+import { backupNow, lastBackup } from './backup'
 import { events } from './events'
 import { exportDar, undoExport } from './export'
 import { act, missedDone, pongState } from './pong'
 import * as q from './queries'
 import { askNow, nextCheckin } from './scheduler'
 import { getSettings, saveSettings } from './settings'
+import { importFromWorkbook } from './workbook'
 import { readDarSheet, seedDatabase } from './seed'
 import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, send, setPongHover, showWindow } from './windows'
 import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
@@ -293,6 +295,31 @@ export function registerIpc(db: DatabaseSync): void {
     check(isObject(changes), 'settings')
     return saveSettings(changes as Partial<Settings>)
   })
+  // First run and Settings: pick the DAR workbook with Windows' own Open dialog. Main
+  // shows the dialog and keeps the path, so the renderer never handles file paths. The
+  // newest sheet's duties, MFOs and header fill in whatever Pong doesn't have yet.
+  ipcMain.handle('workbook:pick', async (event) => {
+    const owner = BrowserWindow.fromWebContents(event.sender)
+    const options: Electron.OpenDialogOptions = {
+      title: 'Your DAR workbook',
+      properties: ['openFile'],
+      filters: [{ name: 'Excel workbook', extensions: ['xlsx'] }]
+    }
+    const picked = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options)
+    if (picked.canceled || !picked.filePaths[0]) return null
+    const path = picked.filePaths[0]
+    const imported = await importFromWorkbook(db, path)
+    changed()
+    return { name: basename(path), ...imported }
+  })
+
+  // backups and the data folder (Settings > General)
+  ipcMain.handle('backup:now', () => backupNow())
+  ipcMain.handle('backup:info', () => ({ last: lastBackup() }))
+  ipcMain.handle('data:openFolder', async () => {
+    await shell.openPath(app.getPath('userData')) // pong.db, settings.json, backups, logs
+  })
+
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
     packaged: app.isPackaged,

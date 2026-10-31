@@ -44,10 +44,14 @@ export default function TodayView(props: { version: number; onChange: () => void
   useEffect(() => {
     window.pong.entriesByDate(today).then(setEntries)
     window.pong.buildGrid(period).then((g) => setAttended(g.daysAttended))
-    Promise.all([window.pong.entriesInPeriod(period), window.pong.dayStatusInPeriod(period)]).then(([e, s]) =>
-      setMissing(missedDays(today, e, s).length)
-    )
-    window.pong.getSettings().then((s) => setLunch(s.lunchStart))
+    Promise.all([
+      window.pong.entriesInPeriod(period),
+      window.pong.dayStatusInPeriod(period),
+      window.pong.getSettings()
+    ]).then(([e, status, settings]) => {
+      setMissing(missedDays(today, e, status, settings.startedOn).length)
+      setLunch(settings.lunchStart)
+    })
     tasks.reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.version, today])

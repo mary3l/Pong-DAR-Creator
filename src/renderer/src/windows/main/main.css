@@ -534,3 +534,7 @@ button.big-teal:disabled {
   text-decoration: line-through;
   color: var(--muted);
 }
+
+.tabs[hidden] {
+  display: none;
+}

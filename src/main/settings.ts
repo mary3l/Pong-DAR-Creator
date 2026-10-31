@@ -3,6 +3,7 @@
 // Like db.ts, this never imports electron: index.ts passes the folder in.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { localDate } from '../shared/dates'
 import { DEFAULT_SETTINGS, settingsError, type Settings } from '../shared/settings'
 import { events } from './events'
 
@@ -36,6 +37,8 @@ export function saveSettings(changes: Partial<Settings>): Settings {
   const error = settingsError(changes)
   if (error) throw new Error(`Bad setting: ${error}`)
   current = { ...current, ...changes }
+  // The first run finishing is day one: missed days only count from here.
+  if (current.setupDone && !current.startedOn) current.startedOn = localDate()
   if (file) {
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(`${file}.tmp`, JSON.stringify(current, null, 2))

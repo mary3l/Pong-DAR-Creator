@@ -56,6 +56,11 @@ describe('missed-day questions', () => {
 })
 
 describe('missedDays', () => {
+  it('never counts days before Pong was set up', () => {
+    // Installed on Thursday Oct 8: Oct 3-7 aren't missed, Fri 9 still is.
+    expect(missedDays('2026-10-10', [], [], '2026-10-08')).toEqual(['2026-10-08', '2026-10-09'])
+  })
+
   it('lists past days with no notes and no day status', () => {
     // Monday Oct 12: Thu 8 logged, Fri 9 sick, so Sat 10 and Sun 11 are missed.
     // (So are Oct 3-7: nothing was logged then either.)

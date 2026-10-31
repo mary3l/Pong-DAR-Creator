@@ -1,11 +1,13 @@
 // MainWindow.tsx: the main window. Runs in the RENDERER.
 // main.tsx picks this screen when the URL says ?window=main.
 // Tabs: Today (your notes), Cutoff (the DAR grid and Export), Tasks (duties and MFOs),
-// Settings. Everything is read and written through window.pong.
+// Settings. The very first time, the setup form instead (FirstRunView).
+// Everything is read and written through window.pong.
 import { useEffect, useState } from 'react'
 import Pong from '../../components/Pong'
 import '../../styles/card.css'
 import CutoffView from './CutoffView'
+import FirstRunView from './FirstRunView'
 import './main.css'
 import SettingsView from './SettingsView'
 import TasksView from './TasksView'
@@ -26,6 +28,11 @@ export default function MainWindow() {
   // Bumped whenever main says data changed: views reload when `version` changes.
   const [version, setVersion] = useState(0)
   const [next, setNext] = useState<number | null>(null)
+  const [setupDone, setSetupDone] = useState<boolean | null>(null) // null = still loading
+
+  useEffect(() => {
+    window.pong.getSettings().then((s) => setSetupDone(s.setupDone))
+  }, [])
 
   useEffect(() => window.pong.onDataChanged(() => setVersion((v) => v + 1)), [])
 
@@ -45,7 +52,7 @@ export default function MainWindow() {
         <div className="brand">
           <Pong mood="happy" size={38} />
           <span className="brand-name">Pong</span>
-          <nav className="tabs">
+          <nav className="tabs" hidden={!setupDone}>
             {TABS.map((t) => (
               <button key={t.id} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
                 {t.label}
@@ -58,10 +65,11 @@ export default function MainWindow() {
         </span>
       </header>
       <main className="view">
-        {tab === 'today' && <TodayView version={version} onChange={bump} onCutoff={() => setTab('cutoff')} />}
-        {tab === 'cutoff' && <CutoffView version={version} onChange={bump} />}
-        {tab === 'tasks' && <TasksView onChange={bump} />}
-        {tab === 'settings' && <SettingsView />}
+        {setupDone === false && <FirstRunView onDone={() => setSetupDone(true)} />}
+        {setupDone && tab === 'today' && <TodayView version={version} onChange={bump} onCutoff={() => setTab('cutoff')} />}
+        {setupDone && tab === 'cutoff' && <CutoffView version={version} onChange={bump} />}
+        {setupDone && tab === 'tasks' && <TasksView onChange={bump} />}
+        {setupDone && tab === 'settings' && <SettingsView />}
       </main>
     </div>
   )

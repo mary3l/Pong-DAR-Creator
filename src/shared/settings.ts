@@ -19,6 +19,7 @@ export interface Settings {
   animations: boolean
   spot: 'taskbar' | 'tray' // Pong on the taskbar, or only the tray icon
   setupDone: boolean // false until the first-run form is saved
+  startedOn: string // 'YYYY-MM-DD' of the first run; days before it are never "missed"
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,7 +36,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart: true,
   animations: true,
   spot: 'taskbar',
-  setupDone: false
+  setupDone: false,
+  startedOn: ''
 }
 
 export const INTERVALS: Settings['intervalMin'][] = [30, 45, 60, 90]
@@ -68,6 +70,9 @@ export function settingsError(changes: Record<string, unknown>): string | null {
       case 'workDays':
         if (!Array.isArray(value) || value.length > 7 || !value.every((d) => Number.isInteger(d) && d >= 0 && d <= 6))
           return key
+        break
+      case 'startedOn':
+        if (typeof value !== 'string' || !/^(\d{4}-\d{2}-\d{2})?$/.test(value)) return key
         break
       case 'spot':
         if (value !== 'taskbar' && value !== 'tray') return key

@@ -23,10 +23,8 @@ function set(mood: PongMood, bubble: Bubble | null): void {
   state = { mood, bubble, animations: getSettings().animations }
   setPongExpanded(bubble !== null)
   // "Tray icon only": the pong window shows only while there's something to say.
-  if (getSettings().spot === 'tray') {
-    if (bubble) showWindow('pong')
-    else getWindow('pong')?.hide()
-  }
+  if (getSettings().spot === 'tray' && !bubble) getWindow('pong')?.hide()
+  else showWindow('pong')
   send('pong', 'pong:state', state)
 }
 

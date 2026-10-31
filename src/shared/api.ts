@@ -65,6 +65,11 @@ export interface PongApi {
   appInfo(): Promise<{ version: string; packaged: boolean; dataFolder: string }>
   onDataChanged(callback: () => void): () => void // notes or days off changed somewhere
 
+  // Settings (Phase 7)
+  pickWorkbook(): Promise<{ name: string; sheetName: string; duties: number; outputs: number } | null> // null = cancelled
+  backupNow(): Promise<{ path: string; at: number }>
+  backupInfo(): Promise<{ last: number | null }>
+  openDataFolder(): Promise<void>
   getSettings(): Promise<Settings>
   setSettings(changes: Partial<Settings>): Promise<Settings> // merges and saves; returns all
   seedFromSample(): Promise<{ duties: number; outputs: number; entries: number }> // dev only
