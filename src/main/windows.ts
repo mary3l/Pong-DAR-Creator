@@ -1,8 +1,18 @@
+// windows.ts: creates the three windows and shows, hides and talks to them.
+// Runs in the MAIN process: only main can make windows.
 import { app, BrowserWindow, screen, type BrowserWindowConstructorOptions } from 'electron'
 import { join } from 'node:path'
+import type { CheckinRequest } from '../shared/types'
 import type { WindowLabel } from '../shared/windowLabel'
 
 const windows = new Map<WindowLabel, BrowserWindow>()
+
+// Closing a window only hides it; Pong keeps running in the tray. Quit (tray menu)
+// sets this first, so the windows really close and the app can exit.
+let quitting = false
+export function setQuitting(): void {
+  quitting = true
+}
 
 const webPreferences: BrowserWindowConstructorOptions['webPreferences'] = {
   preload: join(__dirname, '../preload/index.js'),
@@ -32,6 +42,12 @@ function create(label: WindowLabel, options: BrowserWindowConstructorOptions): B
   lockDown(win)
   load(win, label)
   windows.set(label, win)
+  // The X button (or Alt+F4) hides instead of closing, unless we're quitting.
+  win.on('close', (event) => {
+    if (quitting) return
+    event.preventDefault()
+    win.hide()
+  })
   win.on('closed', () => windows.delete(label))
   return win
 }
@@ -62,21 +78,23 @@ function createPongWindow(): BrowserWindow {
   return win
 }
 
+const CHECKIN_WIDTH = 440
+
 function createCheckinWindow(): BrowserWindow {
   return create('checkin', {
-    width: 440,
+    width: CHECKIN_WIDTH,
     height: 520,
-    ...bottomRight(440, 520, 24),
+    ...bottomRight(CHECKIN_WIDTH, 520, 24),
     frame: false,
     resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
-    backgroundColor: '#FFFCF7'
+    backgroundColor: '#FFFFFF'
   })
 }
 
 function createMainWindow(): BrowserWindow {
-  const win = create('main', {
+  return create('main', {
     width: 1000,
     height: 780,
     minWidth: 760,
@@ -85,20 +103,37 @@ function createMainWindow(): BrowserWindow {
     backgroundColor: '#FFFCF7',
     title: 'Pong'
   })
-  win.once('ready-to-show', () => win.show())
-  // Phase 0: closing the main window quits. Phase 3 changes this to hide, once the tray exists.
-  win.on('closed', () => app.quit())
-  return win
 }
 
-export function createWindows(): void {
+// showMain: false when Pong starts with Windows (--hidden): only the tray and Pong appear.
+export function createWindows(showMain = true): void {
   createPongWindow()
   createCheckinWindow()
-  createMainWindow()
+  const main = createMainWindow()
+  if (showMain) main.once('ready-to-show', () => main.show())
+}
+
+// How to build each window, so one that got destroyed anyway (a crash, or the page
+// calling window.close(), which skips the 'close' event) can be rebuilt on demand.
+const FACTORIES: Record<WindowLabel, () => BrowserWindow> = {
+  pong: createPongWindow,
+  checkin: createCheckinWindow,
+  main: createMainWindow
+}
+
+export function getWindow(label: WindowLabel): BrowserWindow | undefined {
+  return windows.get(label)
 }
 
 export function showWindow(label: WindowLabel): void {
-  const win = windows.get(label)
+  let win = windows.get(label)
+  if (!win && !quitting) {
+    win = FACTORIES[label]()
+    // A fresh window has no page yet: show it once it's drawn, not as a white box.
+    const ready = win
+    ready.once('ready-to-show', () => showWindow(label))
+    return
+  }
   if (!win) return
   if (label === 'pong') {
     // Never steal focus from what the user is typing in.
@@ -112,4 +147,50 @@ export function showWindow(label: WindowLabel): void {
 
 export function hideWindow(label: WindowLabel): void {
   windows.get(label)?.hide()
+}
+
+// Main -> renderer messages. The renderer listens with window.pong.on...() (preload).
+// A window that is still loading gets the message once it's ready.
+export function send(label: WindowLabel, channel: string, payload?: unknown): void {
+  const win = windows.get(label)
+  if (!win) return
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', () => win.webContents.send(channel, payload))
+  } else {
+    win.webContents.send(channel, payload)
+  }
+}
+
+// ---- the check-in window
+
+// What the check-in window should show. Kept here too, so a window that loads late
+// can ask for it (window.pong.checkinRequest()) instead of missing the message.
+let checkinRequest: CheckinRequest = { mode: 'entry', source: 'checkin' }
+
+export function currentCheckinRequest(): CheckinRequest {
+  return checkinRequest
+}
+
+// Only ever called after a click or a hotkey: this window takes the keyboard focus.
+export function openCheckin(request: CheckinRequest): void {
+  checkinRequest = request
+  send('checkin', 'checkin:open', request)
+  placeCheckin()
+  showWindow('checkin')
+}
+
+// The card reports its height; the window follows, keeping its bottom edge in place.
+export function fitCheckin(height: number): void {
+  const win = windows.get('checkin')
+  if (!win) return
+  win.setContentSize(CHECKIN_WIDTH, Math.round(height))
+  placeCheckin()
+}
+
+// Bottom-right of the screen, just above and left of where Pong sits.
+function placeCheckin(): void {
+  const win = windows.get('checkin')
+  if (!win) return
+  const [width, height] = win.getSize()
+  win.setPosition(...Object.values(bottomRight(width, height, 24)) as [number, number])
 }

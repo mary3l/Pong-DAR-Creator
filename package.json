@@ -18,7 +18,8 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "test": "vitest run",
-    "postinstall": "install-electron && electron-builder install-app-deps"
+    "postinstall": "install-electron && electron-builder install-app-deps",
+    "icons": "electron scripts/make-icons.mjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0"

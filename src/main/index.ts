@@ -4,7 +4,9 @@ import { app } from 'electron'
 import { join } from 'node:path'
 import { openDb } from './db'
 import { registerIpc } from './ipc'
-import { createWindows, showWindow } from './windows'
+import { registerShortcuts } from './shortcuts'
+import { createTray, trayBalloon } from './tray'
+import { createWindows, setQuitting, showWindow } from './windows'
 
 // Dev runs keep their data apart from the installed app: %APPDATA%\Pong-dev vs %APPDATA%\Pong.
 // app.isPackaged is false under `npm run dev`, true in the installed app.
@@ -34,5 +36,15 @@ if (!app.requestSingleInstanceLock()) {
     // Order matters: handlers must exist before any window can call window.pong.
     registerIpc(db)
     createWindows()
+    createTray(db)
+
+    // Closing a window only hides it. Quitting (tray menu, or Windows shutting down)
+    // has to let the windows really close.
+    app.on('before-quit', setQuitting)
+
+    const failed = registerShortcuts()
+    if (failed.length > 0) {
+      trayBalloon('Some Pong hotkeys are taken', `Another app already uses ${failed.join(', ')}.`)
+    }
   })
 }

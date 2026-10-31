@@ -16,10 +16,11 @@ import { existsSync } from 'node:fs'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
+import { events } from './events'
 import { exportDar } from './export'
 import * as q from './queries'
 import { readDarSheet, seedDatabase } from './seed'
-import { hideWindow, showWindow } from './windows'
+import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, showWindow } from './windows'
 import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
 import { isIsoDate, localDate } from '../shared/dates'
 import { isWindowLabel } from '../shared/windowLabel'
@@ -112,11 +113,22 @@ export function registerIpc(db: DatabaseSync): void {
     hideWindow(label)
   })
 
+  // the check-in window
+  ipcMain.handle('checkin:request', () => currentCheckinRequest())
+  ipcMain.handle('checkin:open', () => openCheckin({ mode: 'entry', source: 'checkin' }))
+  ipcMain.handle('checkin:fit', (_e, height: unknown) => {
+    check(typeof height === 'number' && height >= 200 && height <= 900, 'height')
+    fitCheckin(height)
+  })
+
   // entries
   ipcMain.handle('entries:add', (_e, entry: unknown) => {
     checkNewEntry(entry) // after this line, TypeScript knows entry is a NewEntry
-    return q.addEntry(db, entry)
+    const saved = q.addEntry(db, entry)
+    events.emit('entry-saved', saved) // tray count, scheduler, Pong's happy hop
+    return saved
   })
+  ipcMain.handle('entries:lastTagged', () => q.lastTagged(db))
   ipcMain.handle('entries:byDate', (_e, date: unknown) => {
     check(isIsoDate(date), 'date')
     return q.entriesByDate(db, date)
@@ -141,6 +153,7 @@ export function registerIpc(db: DatabaseSync): void {
     q.updateDuty(db, id, changes as { title?: string; archived?: boolean })
   })
   ipcMain.handle('outputs:list', () => q.listOutputs(db))
+  ipcMain.handle('outputs:recent', () => q.recentOutputs(db))
   ipcMain.handle('outputs:add', (_e, dutyId: unknown, title: unknown) => {
     check(isId(dutyId), 'dutyId')
     check(isText(title, 300), 'title')

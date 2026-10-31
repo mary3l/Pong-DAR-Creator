@@ -116,6 +116,35 @@ export function updateOutput(
   if (changes.status !== undefined) db.prepare(`UPDATE outputs SET status = ? WHERE id = ?`).run(changes.status, id)
 }
 
+// The check-in card's chips: active MFOs (of duties still in use), most recently
+// logged first. MFOs never logged come after, newest first, so a fresh install
+// still shows something. MAX(e.created_at) is NULL for those; `IS NULL` sorts them last.
+export function recentOutputs(db: DatabaseSync, limit = 5): Output[] {
+  return db
+    .prepare(
+      `SELECT o.id, o.duty_id AS dutyId, o.title, o.short, o.status, o.created_at AS createdAt
+       FROM outputs o
+       JOIN duties d ON d.id = o.duty_id
+       LEFT JOIN entries e ON e.output_id = o.id
+       WHERE o.status = 'active' AND d.archived = 0
+       GROUP BY o.id
+       ORDER BY MAX(e.created_at) IS NULL, MAX(e.created_at) DESC, o.created_at DESC, o.id DESC
+       LIMIT ?`
+    )
+    .all(limit) as unknown as Output[]
+}
+
+// The newest note that was tagged to an MFO: the card preselects its MFO and %.
+export function lastTagged(db: DatabaseSync): Entry | null {
+  const row = db
+    .prepare(
+      `SELECT ${ENTRY_COLUMNS} FROM entries WHERE output_id IS NOT NULL
+       ORDER BY created_at DESC, id DESC LIMIT 1`
+    )
+    .get()
+  return (row as unknown as Entry | undefined) ?? null
+}
+
 // ---- profile (always the single row with id = 1)
 
 // What getProfile returns before you've filled anything in.

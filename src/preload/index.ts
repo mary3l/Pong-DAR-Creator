@@ -8,6 +8,7 @@
 // Changes here need a restart of `npm run dev`; hot reload only covers the renderer.
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PongApi } from '../shared/api'
+import type { CheckinRequest } from '../shared/types'
 
 // The only door from the renderer to the main process. Add one method per feature;
 // never expose ipcRenderer itself.
@@ -18,14 +19,27 @@ const api: PongApi = {
   showWindow: (label) => ipcRenderer.invoke('window:show', label),
   hideWindow: (label) => ipcRenderer.invoke('window:hide', label),
 
+  openCheckin: () => ipcRenderer.invoke('checkin:open'),
+  checkinRequest: () => ipcRenderer.invoke('checkin:request'),
+  fitCheckin: (height) => ipcRenderer.invoke('checkin:fit', height),
+  // The other direction: main sends, the page listens. The page still never sees
+  // ipcRenderer: it gets a function that removes its own listener, nothing more.
+  onCheckinOpen: (callback) => {
+    const listener = (_e: Electron.IpcRendererEvent, request: CheckinRequest): void => callback(request)
+    ipcRenderer.on('checkin:open', listener)
+    return () => ipcRenderer.removeListener('checkin:open', listener)
+  },
+
   addEntry: (entry) => ipcRenderer.invoke('entries:add', entry),
   entriesByDate: (date) => ipcRenderer.invoke('entries:byDate', date),
   entriesInPeriod: (period) => ipcRenderer.invoke('entries:inPeriod', period),
+  lastTagged: () => ipcRenderer.invoke('entries:lastTagged'),
 
   listDuties: () => ipcRenderer.invoke('duties:list'),
   addDuty: (category, title) => ipcRenderer.invoke('duties:add', category, title),
   updateDuty: (id, changes) => ipcRenderer.invoke('duties:update', id, changes),
   listOutputs: () => ipcRenderer.invoke('outputs:list'),
+  recentOutputs: () => ipcRenderer.invoke('outputs:recent'),
   addOutput: (dutyId, title) => ipcRenderer.invoke('outputs:add', dutyId, title),
   updateOutput: (id, changes) => ipcRenderer.invoke('outputs:update', id, changes),
 

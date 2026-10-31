@@ -64,6 +64,27 @@ describe('duties and MFOs', () => {
   })
 })
 
+describe('check-in card', () => {
+  it('lists recently logged MFOs first, then the newest unused ones', () => {
+    const duty = q.addDuty(db, 'core', 'Frontend')
+    const a = q.addOutput(db, duty.id, 'A', new Date(2026, 9, 1))
+    const b = q.addOutput(db, duty.id, 'B', new Date(2026, 9, 2))
+    q.addOutput(db, duty.id, 'C', new Date(2026, 9, 3))
+    const done = q.addOutput(db, duty.id, 'Done', new Date(2026, 9, 4))
+    q.updateOutput(db, done.id, { status: 'done' }) // finished MFOs never show as chips
+    q.addEntry(db, { text: 'x', outputId: a.id, progress: 0.25 }, new Date(2026, 9, 5, 9))
+    q.addEntry(db, { text: 'y', outputId: b.id, progress: 0.5 }, new Date(2026, 9, 5, 10))
+    expect(q.recentOutputs(db).map((o) => o.title)).toEqual(['B', 'A', 'C'])
+    expect(q.recentOutputs(db, 1).map((o) => o.title)).toEqual(['B'])
+    expect(q.lastTagged(db)).toMatchObject({ outputId: b.id, progress: 0.5 })
+  })
+
+  it('has no last tagged note on a fresh install', () => {
+    q.addEntry(db, { text: 'a plain note' })
+    expect(q.lastTagged(db)).toBeNull()
+  })
+})
+
 describe('profile', () => {
   it('starts empty and merges changes', () => {
     expect(q.getProfile(db).name).toBeNull()

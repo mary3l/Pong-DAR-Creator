@@ -6,7 +6,7 @@
 // Adding a feature = one line here, one in the preload, one handler in ipc.ts.
 import type { DarGrid } from './cutoff'
 import type {
-  Category, DayStatus, DayType, Duty, Entry, ExportResult, NewEntry, Output, Period, Profile
+  Category, CheckinRequest, DayStatus, DayType, Duty, Entry, ExportResult, NewEntry, Output, Period, Profile
 } from './types'
 import type { WindowLabel } from './windowLabel'
 
@@ -18,14 +18,23 @@ export interface PongApi {
   showWindow(label: WindowLabel): Promise<void>
   hideWindow(label: WindowLabel): Promise<void>
 
+  // the check-in window (Phase 3)
+  openCheckin(): Promise<void> // shows the entry card for today
+  checkinRequest(): Promise<CheckinRequest> // what the card should show right now
+  fitCheckin(height: number): Promise<void> // the card's height in px; the window follows
+  // Main -> renderer: called each time main opens the card. Returns "stop listening".
+  onCheckinOpen(callback: (request: CheckinRequest) => void): () => void
+
   addEntry(entry: NewEntry): Promise<Entry> // returns the saved note, with its id
   entriesByDate(date: string): Promise<Entry[]>
   entriesInPeriod(period: Period): Promise<Entry[]>
+  lastTagged(): Promise<Entry | null> // newest note with an MFO: the card preselects it
 
   listDuties(): Promise<Duty[]>
   addDuty(category: Category, title: string): Promise<Duty>
   updateDuty(id: number, changes: { title?: string; archived?: boolean }): Promise<void>
   listOutputs(): Promise<Output[]>
+  recentOutputs(): Promise<Output[]> // the 5 chips on the check-in card
   addOutput(dutyId: number, title: string): Promise<Output>
   updateOutput(id: number, changes: { title?: string; status?: Output['status'] }): Promise<void>
 

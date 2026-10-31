@@ -88,3 +88,10 @@ export interface ExportResult {
   path: string // the workbook that now has the new sheet
   backupPath: string // <name>.bak.xlsx, the workbook as it was before
 }
+
+// What the check-in window should show when main opens it.
+//   entry:  "What are you up to?" for today. source says how it was opened.
+//   missed: walk through past days with no notes, oldest first (Phase 4).
+export type CheckinRequest =
+  | { mode: 'entry'; source: 'checkin' | 'hotkey' }
+  | { mode: 'missed'; days: string[] }

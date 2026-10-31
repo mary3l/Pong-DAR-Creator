@@ -1,0 +1,321 @@
+/* card.css: the check-in card and its pieces (docs/design/boards/Main.dc.html).
+   Shared by the check-in window and the Today view's "add a note". */
+
+.card {
+  background: #ffffff;
+  padding: 20px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-title {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.card-sub {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  border: 0;
+  background: #f4efe6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.note-input {
+  height: 50px;
+  border-radius: 14px;
+  border: 2px solid var(--field);
+  padding: 0 14px;
+  font-size: 16px;
+  background: var(--ground);
+  width: 100%;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border: 2px solid var(--field);
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 12px;
+  height: 40px;
+  min-height: 40px;
+  border-radius: 999px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip[aria-pressed='true'],
+.pick[aria-pressed='true'] {
+  border-color: var(--teal);
+  background: #e3f1ef;
+  color: var(--teal-dark);
+}
+
+.chip.new {
+  border-style: dashed;
+  color: var(--teal-dark);
+}
+
+.hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.pcts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pct {
+  border: 2px solid var(--field);
+  background: #ffffff;
+  color: var(--ink);
+  height: 54px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.pct b {
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.pct small {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pct[aria-pressed='true'] {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #ffffff;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+kbd {
+  font-family: inherit;
+  font-weight: 800;
+  background: #f4efe6;
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: var(--ink);
+}
+
+button.teal {
+  background: var(--teal);
+  color: #ffffff;
+  border: 0;
+  font-size: 15px;
+  padding: 0 24px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+button.teal:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.outline {
+  border: 2px solid var(--teal);
+  background: #ffffff;
+  color: var(--teal-dark);
+  height: 48px;
+  border-radius: 14px;
+}
+
+button.link {
+  border: 0;
+  background: transparent;
+  color: var(--teal);
+  padding: 0 8px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f7fbfa;
+  border: 1px solid #d5eae6;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.panel select,
+.panel input {
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid var(--field);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 14px;
+  background: #ffffff;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.error {
+  color: #a3341f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pick {
+  border: 2px solid var(--field);
+  background: #ffffff;
+  color: var(--ink);
+  border-radius: 14px;
+  min-height: 64px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.pick small {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.big-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.big-choice {
+  border: 2px solid var(--field);
+  background: var(--ground);
+  border-radius: 18px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  min-height: 96px;
+}
+
+.big-choice b {
+  font-size: 16px;
+}
+
+.big-choice small {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.badge {
+  align-self: flex-start;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #7a4e0b;
+  background: #ffe7b3;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.logged {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #f7fbfa;
+  border: 1px solid #d5eae6;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.logged div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.logged span:first-child {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--teal-dark);
+  background: #e3f1ef;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}

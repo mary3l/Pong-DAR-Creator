@@ -84,3 +84,14 @@ html[data-window='pong'] body {
   overflow: hidden;
   user-select: none;
 }
+
+/* The check-in window is exactly as tall as its card (CheckinWindow.tsx). */
+html[data-window='checkin'],
+html[data-window='checkin'] body {
+  background: #ffffff;
+  overflow: hidden;
+}
+
+html[data-window='checkin'] #root {
+  height: auto;
+}
