@@ -22,7 +22,8 @@
     "icons": "electron scripts/make-icons.mjs"
   },
   "dependencies": {
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "koffi": "^3.3.6"
   },
   "devDependencies": {
     "@electron-toolkit/tsconfig": "^2.0.0",

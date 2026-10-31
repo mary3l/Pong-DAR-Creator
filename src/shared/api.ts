@@ -6,7 +6,8 @@
 // Adding a feature = one line here, one in the preload, one handler in ipc.ts.
 import type { DarGrid } from './cutoff'
 import type {
-  Category, CheckinRequest, DayStatus, DayType, Duty, Entry, ExportResult, NewEntry, Output, Period, Profile
+  Category, CheckinRequest, DayStatus, DayType, Duty, Entry, ExportResult, NewEntry, Output, Period,
+  PongAction, PongState, Profile
 } from './types'
 import type { WindowLabel } from './windowLabel'
 
@@ -24,6 +25,13 @@ export interface PongApi {
   fitCheckin(height: number): Promise<void> // the card's height in px; the window follows
   // Main -> renderer: called each time main opens the card. Returns "stop listening".
   onCheckinOpen(callback: (request: CheckinRequest) => void): () => void
+  missedDone(summary: string | null): Promise<void> // the missed-day card finished (or was closed)
+
+  // Pong on the taskbar (Phases 4 and 6). Main owns the mood and bubble.
+  pongState(): Promise<PongState>
+  onPongState(callback: (state: PongState) => void): () => void
+  pongAction(action: PongAction): Promise<void> // a click on the turtle or a bubble button
+  askNow(): Promise<void> // a check-in right now, without waiting for the timer
 
   addEntry(entry: NewEntry): Promise<Entry> // returns the saved note, with its id
   entriesByDate(date: string): Promise<Entry[]>

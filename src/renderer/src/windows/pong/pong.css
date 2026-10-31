@@ -1,0 +1,186 @@
+/* pong.css: the turtle on the taskbar and his speech bubble (docs/design/boards/Main.dc.html). */
+
+.pong-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* The turtle sits in the window's bottom-right 140x150 box, whatever the window size. */
+.pong-turtle {
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  width: 120px;
+  height: 120px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  min-height: 0;
+  border-radius: 0;
+  cursor: pointer;
+  transition: transform 0.55s cubic-bezier(0.3, 1.45, 0.5, 1);
+}
+
+.pong-turtle:focus-visible {
+  outline: none;
+}
+
+.bubble {
+  position: absolute;
+  right: 118px;
+  bottom: 70px;
+  width: 300px;
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 10px 28px rgba(42, 38, 34, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--ink);
+}
+
+/* The little tail pointing at Pong. */
+.bubble::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  bottom: 34px;
+  width: 18px;
+  height: 18px;
+  background: #ffffff;
+  transform: rotate(45deg);
+  border-radius: 3px;
+}
+
+.bubble-title {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 23px;
+  line-height: 1.15;
+}
+
+.bubble-sub {
+  font-size: 14px;
+  color: #4a433c;
+  line-height: 1.45;
+}
+
+.bubble-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.bubble-buttons button {
+  height: 44px;
+  border-radius: 14px;
+  font-size: 14px;
+  padding: 0 14px;
+}
+
+.toast {
+  position: absolute;
+  right: 118px;
+  bottom: 74px;
+  width: 300px;
+  background: var(--ink);
+  color: #ffffff;
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 10px 26px rgba(42, 38, 34, 0.25);
+}
+
+.toast b {
+  font-size: 14px;
+}
+
+.toast span {
+  font-size: 13px;
+  color: #dcd4c8;
+}
+
+/* ---- animations (Phase 6). Off with the Animations setting or reduced motion. */
+
+@keyframes pong-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes pong-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-14px);
+  }
+  60% {
+    transform: translateY(0);
+  }
+  78% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.8);
+  }
+}
+
+.animated .bob {
+  animation: pong-bob 2.4s ease-in-out infinite;
+}
+
+.animated .hop {
+  animation: pong-hop 0.9s ease-out 1;
+}
+
+.animated .bubble,
+.animated .toast {
+  animation: pop-in 0.3s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+.animated .sparkles path {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sparkle 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated .bob,
+  .animated .hop,
+  .animated .bubble,
+  .animated .toast,
+  .animated .sparkles path {
+    animation: none;
+  }
+}

@@ -2,6 +2,7 @@
 // Runs in the MAIN process: only main can make windows.
 import { app, BrowserWindow, screen, type BrowserWindowConstructorOptions } from 'electron'
 import { join } from 'node:path'
+import { events } from './events'
 import type { CheckinRequest } from '../shared/types'
 import type { WindowLabel } from '../shared/windowLabel'
 
@@ -60,12 +61,15 @@ function bottomRight(width: number, height: number, margin: number): { x: number
   }
 }
 
-// Phase 0: rough bottom-right spot. Phase 6 parks it on the taskbar edge (placement.ts).
+// The pong window is just the turtle (140x150), and grows up and to the left while
+// a speech bubble shows. Phase 6 parks it on the taskbar edge (placement.ts).
+export const PONG_SIZE = { width: 140, height: 150 }
+export const PONG_EXPANDED = { width: 460, height: 330 }
+
 function createPongWindow(): BrowserWindow {
   const win = create('pong', {
-    width: 140,
-    height: 150,
-    ...bottomRight(140, 150, 16),
+    ...PONG_SIZE,
+    ...bottomRight(PONG_SIZE.width, PONG_SIZE.height, 16),
     transparent: true,
     backgroundColor: '#00000000',
     frame: false,
@@ -78,10 +82,21 @@ function createPongWindow(): BrowserWindow {
   return win
 }
 
+// Grow for a bubble, shrink back after, keeping the bottom-right corner where it is.
+export function setPongExpanded(expanded: boolean): void {
+  const win = windows.get('pong')
+  if (!win) return
+  const size = expanded ? PONG_EXPANDED : PONG_SIZE
+  const [x, y] = win.getPosition()
+  const [width, height] = win.getSize()
+  if (width === size.width && height === size.height) return
+  win.setBounds({ x: x + width - size.width, y: y + height - size.height, ...size })
+}
+
 const CHECKIN_WIDTH = 440
 
 function createCheckinWindow(): BrowserWindow {
-  return create('checkin', {
+  const win = create('checkin', {
     width: CHECKIN_WIDTH,
     height: 520,
     ...bottomRight(CHECKIN_WIDTH, 520, 24),
@@ -91,6 +106,10 @@ function createCheckinWindow(): BrowserWindow {
     skipTaskbar: true,
     backgroundColor: '#FFFFFF'
   })
+  // Pong listens while the card is open (pong.ts).
+  win.on('show', () => events.emit('checkin-shown'))
+  win.on('hide', () => events.emit('checkin-hidden'))
+  return win
 }
 
 function createMainWindow(): BrowserWindow {

@@ -2,8 +2,9 @@
 // One SVG, six moods. The head slides in and out of the shell with a CSS transition.
 
 import type { CSSProperties } from "react";
+import type { PongMood } from "../../../shared/types";
 
-export type PongMood = "sleep" | "peek" | "ask" | "listen" | "happy" | "snooze";
+export type { PongMood };
 
 type Props = {
   mood?: PongMood;

@@ -67,6 +67,33 @@ export function longDate(date: string): string {
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
 }
 
+// For Pong's questions about missed days.
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// '2026-10-24' -> "Saturday, Oct 24"
+export function dayLong(date: string): string {
+  const d = fromIso(date)
+  return `${WEEKDAYS[d.getUTCDay()]}, ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCDate()}`
+}
+
+// '2026-10-24' -> "Saturday"
+export function weekdayName(date: string): string {
+  return WEEKDAYS[dayOfWeek(date)]
+}
+
+// How Pong says a past day: "yesterday", "on Saturday" (this past week), or "on Oct 12".
+export function whenSaid(date: string, today: string): string {
+  if (addDays(date, 1) === today) return 'yesterday'
+  if (addDays(date, 7) > today) return `on ${weekdayName(date)}`
+  const d = fromIso(date)
+  return `on ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCDate()}`
+}
+
+// The missed-day question: "Rest day on Saturday?" for a weekend, "Day off yesterday?" otherwise.
+export function missedQuestion(date: string, today: string): string {
+  return `${isWeekend(date) ? 'Rest day' : 'Day off'} ${whenSaid(date, today)}?`
+}
+
 // Past days in today's period with no notes and no day_status row: Pong asks about these.
 // Pick<Entry, 'workDate'> = "any object with at least a workDate", so callers can pass
 // full entries or just { workDate } in tests.

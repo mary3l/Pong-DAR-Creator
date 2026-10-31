@@ -95,3 +95,26 @@ export interface ExportResult {
 export type CheckinRequest =
   | { mode: 'entry'; source: 'checkin' | 'hotkey' }
   | { mode: 'missed'; days: string[] }
+
+// ---- Pong on the taskbar (Phases 4 and 6)
+
+export type PongMood = 'sleep' | 'peek' | 'ask' | 'listen' | 'happy' | 'snooze'
+
+// What Pong's speech bubble shows, if anything.
+//   ask:    "What are you up to?" [Tell Pong] [Later] [On a break]
+//   missed: "Good morning! I didn't hear from you on ..." [Fill them in] [Later]
+//   toast:  a short dark note after something happened ("Saved to ...")
+export type Bubble =
+  | { kind: 'ask'; sub: string }
+  | { kind: 'missed'; days: string[] }
+  | { kind: 'toast'; title: string; sub: string }
+
+// Main owns this and sends it to the pong window whenever it changes.
+export interface PongState {
+  mood: PongMood
+  bubble: Bubble | null
+  animations: boolean // the Animations setting
+}
+
+// What a click in the pong window asks main to do.
+export type PongAction = 'click' | 'tell' | 'later' | 'break' | 'fill' | 'dismiss'

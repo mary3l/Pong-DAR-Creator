@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import '../../styles/card.css'
 import type { CheckinRequest } from '../../../../shared/types'
 import EntryCard from './EntryCard'
+import MissedCard from './MissedCard'
 
 export default function CheckinWindow() {
   const [request, setRequest] = useState<CheckinRequest | null>(null)
@@ -47,6 +48,18 @@ export default function CheckinWindow() {
   return (
     <div ref={root}>
       {request?.mode === 'entry' && <EntryCard key={opened} source={request.source} onDone={hide} />}
+      {request?.mode === 'missed' && (
+        <MissedCard
+          key={opened}
+          days={request.days}
+          // All days answered: on to "What are you up to?" for today.
+          onFinished={() => setRequest({ mode: 'entry', source: 'checkin' })}
+          onClose={() => {
+            window.pong.missedDone(null)
+            hide()
+          }}
+        />
+      )}
     </div>
   )
 }

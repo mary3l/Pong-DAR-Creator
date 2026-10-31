@@ -8,7 +8,7 @@
 // Changes here need a restart of `npm run dev`; hot reload only covers the renderer.
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PongApi } from '../shared/api'
-import type { CheckinRequest } from '../shared/types'
+import type { CheckinRequest, PongState } from '../shared/types'
 
 // The only door from the renderer to the main process. Add one method per feature;
 // never expose ipcRenderer itself.
@@ -29,6 +29,16 @@ const api: PongApi = {
     ipcRenderer.on('checkin:open', listener)
     return () => ipcRenderer.removeListener('checkin:open', listener)
   },
+  missedDone: (summary) => ipcRenderer.invoke('missed:done', summary),
+
+  pongState: () => ipcRenderer.invoke('pong:state'),
+  onPongState: (callback) => {
+    const listener = (_e: Electron.IpcRendererEvent, state: PongState): void => callback(state)
+    ipcRenderer.on('pong:state', listener)
+    return () => ipcRenderer.removeListener('pong:state', listener)
+  },
+  pongAction: (action) => ipcRenderer.invoke('pong:action', action),
+  askNow: () => ipcRenderer.invoke('pong:askNow'),
 
   addEntry: (entry) => ipcRenderer.invoke('entries:add', entry),
   entriesByDate: (date) => ipcRenderer.invoke('entries:byDate', date),

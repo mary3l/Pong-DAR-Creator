@@ -18,19 +18,22 @@ import { join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
 import { events } from './events'
 import { exportDar } from './export'
+import { act, missedDone, pongState } from './pong'
 import * as q from './queries'
+import { askNow } from './scheduler'
 import { readDarSheet, seedDatabase } from './seed'
 import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, showWindow } from './windows'
 import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
 import { isIsoDate, localDate } from '../shared/dates'
 import { isWindowLabel } from '../shared/windowLabel'
-import type { Category, DayType, NewEntry, Period, Profile } from '../shared/types'
+import type { Category, DayType, NewEntry, PongAction, Period, Profile } from '../shared/types'
 
 // The allowed values, as lists we can check against at runtime.
 const PROGRESS = [0.25, 0.5, 0.75, 1]
 const CATEGORIES: Category[] = ['core', 'support']
 const DAY_TYPES: DayType[] = ['rest', 'sick', 'personal', 'holiday']
 const SOURCES = ['checkin', 'hotkey', 'manual'] // not 'seed': only seed.ts may use that
+const PONG_ACTIONS: PongAction[] = ['click', 'tell', 'later', 'break', 'fill', 'dismiss']
 const PROFILE_KEYS: (keyof Profile)[] = [
   'name', 'position', 'department', 'unit', 'teamLeader',
   'confirmedBy', 'confirmedTitle', 'notedBy', 'notedTitle', 'workbookPath'
@@ -121,6 +124,20 @@ export function registerIpc(db: DatabaseSync): void {
     fitCheckin(height)
   })
 
+  // Pong on the taskbar
+  ipcMain.handle('pong:state', () => pongState())
+  ipcMain.handle('pong:askNow', () => askNow()) // "Try a check-in" in Settings
+  ipcMain.handle('pong:action', (_e, action: unknown) => {
+    check(PONG_ACTIONS.includes(action as PongAction), 'action')
+    act(action as PongAction)
+  })
+  // The missed-day card is done: a summary like "Sat: Rest Day · Sun: 2 logs added",
+  // or null when you closed it early.
+  ipcMain.handle('missed:done', (_e, summary: unknown) => {
+    check(summary === null || isText(summary, 300), 'summary')
+    missedDone(summary)
+  })
+
   // entries
   ipcMain.handle('entries:add', (_e, entry: unknown) => {
     checkNewEntry(entry) // after this line, TypeScript knows entry is a NewEntry
@@ -181,6 +198,7 @@ export function registerIpc(db: DatabaseSync): void {
     check(isIsoDate(date), 'date')
     check(type === null || DAY_TYPES.includes(type as DayType), 'type') // null = clear the day
     q.setDayStatus(db, date, type as DayType | null)
+    events.emit('day-status-saved', date)
   })
 
   // the DAR grid for one cutoff

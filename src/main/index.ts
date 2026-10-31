@@ -3,10 +3,14 @@
 import { app } from 'electron'
 import { join } from 'node:path'
 import { openDb } from './db'
+import { watchPower } from './idle'
 import { registerIpc } from './ipc'
+import { initPong } from './pong'
+import { startScheduler } from './scheduler'
+import { getSettings, loadSettings } from './settings'
 import { registerShortcuts } from './shortcuts'
 import { createTray, trayBalloon } from './tray'
-import { createWindows, setQuitting, showWindow } from './windows'
+import { createWindows, getWindow, setQuitting, showWindow } from './windows'
 
 // Dev runs keep their data apart from the installed app: %APPDATA%\Pong-dev vs %APPDATA%\Pong.
 // app.isPackaged is false under `npm run dev`, true in the installed app.
@@ -34,9 +38,15 @@ if (!app.requestSingleInstanceLock()) {
     app.on('will-quit', () => db.close())
 
     // Order matters: handlers must exist before any window can call window.pong.
+    loadSettings(app.getPath('userData'))
     registerIpc(db)
     createWindows()
     createTray(db)
+    initPong(db)
+    // Pong naps on the taskbar from the start (unless you chose "Tray icon only").
+    if (getSettings().spot === 'taskbar') getWindow('pong')?.once('ready-to-show', () => showWindow('pong'))
+    watchPower()
+    startScheduler(db)
 
     // Closing a window only hides it. Quitting (tray menu, or Windows shutting down)
     // has to let the windows really close.

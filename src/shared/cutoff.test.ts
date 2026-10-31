@@ -1,7 +1,7 @@
 // cutoff.test.ts: the rules of the DAR, written as checks.
 // Each test name says the rule, so when one fails, its name tells you what broke.
 import { describe, expect, it } from 'vitest'
-import { buildGrid, daysIn, longDate, missedDays, periodFor, sheetName } from './cutoff'
+import { buildGrid, dayLong, daysIn, longDate, missedDays, missedQuestion, periodFor, sheetName } from './cutoff'
 import type { Duty, Entry, Output, Progress } from './types'
 
 describe('periodFor', () => {
@@ -41,6 +41,17 @@ describe('longDate', () => {
   it('writes the date the way L9 shows it', () => {
     expect(longDate('2026-10-22')).toBe('October 22, 2026')
     expect(longDate('2027-01-02')).toBe('January 2, 2027') // no leading zero
+  })
+})
+
+describe('missed-day questions', () => {
+  it('says the day the way a person would', () => {
+    // Monday Oct 26: asking about the weekend and an older weekday.
+    expect(missedQuestion('2026-10-25', '2026-10-26')).toBe('Rest day yesterday?')
+    expect(missedQuestion('2026-10-24', '2026-10-26')).toBe('Rest day on Saturday?')
+    expect(missedQuestion('2026-10-20', '2026-10-26')).toBe('Day off on Tuesday?')
+    expect(missedQuestion('2026-10-19', '2026-10-26')).toBe('Day off on Oct 19?') // a week back
+    expect(dayLong('2026-10-24')).toBe('Saturday, Oct 24')
   })
 })
 

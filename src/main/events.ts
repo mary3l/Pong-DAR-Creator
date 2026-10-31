@@ -12,4 +12,6 @@ export const events = new EventEmitter<{
   'day-status-saved': [date: string]
   'pause-changed': []
   'settings-changed': []
+  'checkin-shown': []
+  'checkin-hidden': []
 }>()
