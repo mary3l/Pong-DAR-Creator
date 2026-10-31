@@ -3,6 +3,7 @@
 import { app, BrowserWindow, screen, type BrowserWindowConstructorOptions } from 'electron'
 import { join } from 'node:path'
 import { events } from './events'
+import { PONG_SIZE, startPlacement } from './placement'
 import type { CheckinRequest } from '../shared/types'
 import type { WindowLabel } from '../shared/windowLabel'
 
@@ -61,36 +62,32 @@ function bottomRight(width: number, height: number, margin: number): { x: number
   }
 }
 
-// The pong window is just the turtle (140x150), and grows up and to the left while
-// a speech bubble shows. Phase 6 parks it on the taskbar edge (placement.ts).
-export const PONG_SIZE = { width: 140, height: 150 }
-export const PONG_EXPANDED = { width: 460, height: 330 }
-
+// The pong window: the turtle (140x150), growing up and left while a bubble shows.
+// placement.ts parks it on the taskbar and keeps it there.
 function createPongWindow(): BrowserWindow {
   const win = create('pong', {
     ...PONG_SIZE,
-    ...bottomRight(PONG_SIZE.width, PONG_SIZE.height, 16),
     transparent: true,
     backgroundColor: '#00000000',
     frame: false,
     hasShadow: false,
     resizable: false,
     skipTaskbar: true,
-    focusable: false
+    focusable: false // clicks work, but it never takes the keyboard from your app
   })
-  win.setAlwaysOnTop(true, 'screen-saver')
+  // Click-through: clicks pass to whatever is behind the window, except over Pong and
+  // his bubble. forward: true still sends mouse moves, so the page can tell main
+  // when the cursor is over Pong (setPongHover below).
+  win.setIgnoreMouseEvents(true, { forward: true })
+  startPlacement(win)
   return win
 }
 
-// Grow for a bubble, shrink back after, keeping the bottom-right corner where it is.
-export function setPongExpanded(expanded: boolean): void {
+// The renderer says the cursor is over Pong or his bubble (true) or not (false).
+export function setPongHover(hover: boolean): void {
   const win = windows.get('pong')
-  if (!win) return
-  const size = expanded ? PONG_EXPANDED : PONG_SIZE
-  const [x, y] = win.getPosition()
-  const [width, height] = win.getSize()
-  if (width === size.width && height === size.height) return
-  win.setBounds({ x: x + width - size.width, y: y + height - size.height, ...size })
+  if (hover) win?.setIgnoreMouseEvents(false)
+  else win?.setIgnoreMouseEvents(true, { forward: true })
 }
 
 const CHECKIN_WIDTH = 440
@@ -206,10 +203,14 @@ export function fitCheckin(height: number): void {
   placeCheckin()
 }
 
-// Bottom-right of the screen, just above and left of where Pong sits.
+// Just above and left of where Pong sits, like the board; never off the top of the screen.
 function placeCheckin(): void {
   const win = windows.get('checkin')
   if (!win) return
   const [width, height] = win.getSize()
-  win.setPosition(...Object.values(bottomRight(width, height, 24)) as [number, number])
+  const { workArea } = screen.getPrimaryDisplay()
+  win.setPosition(
+    Math.round(workArea.x + workArea.width - width - 150),
+    Math.round(Math.max(workArea.y + 8, workArea.y + workArea.height - height - 130))
+  )
 }

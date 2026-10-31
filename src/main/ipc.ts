@@ -23,7 +23,7 @@ import * as q from './queries'
 import { askNow, nextCheckin } from './scheduler'
 import { getSettings, saveSettings } from './settings'
 import { readDarSheet, seedDatabase } from './seed'
-import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, send, showWindow } from './windows'
+import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, send, setPongHover, showWindow } from './windows'
 import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
 import { isIsoDate, localDate } from '../shared/dates'
 import { isWindowLabel } from '../shared/windowLabel'
@@ -153,6 +153,10 @@ export function registerIpc(db: DatabaseSync): void {
   // Pong on the taskbar
   ipcMain.handle('pong:state', () => pongState())
   ipcMain.handle('pong:askNow', () => askNow()) // "Try a check-in" in Settings
+  ipcMain.handle('pong:hover', (_e, hover: unknown) => {
+    check(typeof hover === 'boolean', 'hover')
+    setPongHover(hover)
+  })
   ipcMain.handle('pong:action', (_e, action: unknown) => {
     check(PONG_ACTIONS.includes(action as PongAction), 'action')
     act(action as PongAction)

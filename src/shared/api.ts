@@ -33,6 +33,7 @@ export interface PongApi {
   onPongState(callback: (state: PongState) => void): () => void
   pongAction(action: PongAction): Promise<void> // a click on the turtle or a bubble button
   askNow(): Promise<void> // a check-in right now, without waiting for the timer
+  setPongHover(hover: boolean): Promise<void> // cursor over Pong or his bubble: take clicks
 
   addEntry(entry: NewEntry): Promise<Entry> // returns the saved note, with its id
   entriesByDate(date: string): Promise<Entry[]>

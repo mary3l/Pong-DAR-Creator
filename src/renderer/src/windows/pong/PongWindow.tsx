@@ -2,7 +2,7 @@
 // Main decides the mood and the bubble (pong.ts) and sends them here; this window only
 // draws them and reports clicks. It can't take keyboard focus (focusable: false), so
 // everything here is a click; typing happens in the check-in window.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Pong from '../../components/Pong'
 import { dayLong } from '../../../../shared/cutoff'
 import type { PongAction, PongState } from '../../../../shared/types'
@@ -40,6 +40,47 @@ export default function PongWindow() {
     window.pong.pongState().then(setState)
     return window.pong.onPongState(setState)
   }, [])
+
+  // Click-through. Main lets clicks pass through this window unless we say the cursor
+  // is over Pong or his bubble. Mouse moves still arrive (forward: true in windows.ts),
+  // so every move checks what's under the cursor and reports only when that changes.
+  const hovering = useRef(false)
+  const cursor = useRef<{ x: number; y: number } | null>(null)
+  const report = (over: boolean) => {
+    if (over === hovering.current) return
+    hovering.current = over
+    window.pong.setPongHover(over)
+  }
+  const overPong = (x: number, y: number) =>
+    document.elementFromPoint(x, y)?.closest('.pong-turtle, .bubble, .toast') != null
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      cursor.current = { x: e.clientX, y: e.clientY }
+      report(overPong(e.clientX, e.clientY))
+    }
+    // Switching click-through on or off makes Chromium fire a mouseleave even though the
+    // cursor hasn't moved. A real leave happens at or past the window's edge; one from
+    // inside the window is that false alarm, so it's ignored.
+    const onLeave = (e: MouseEvent) => {
+      const inside = e.clientX > 0 && e.clientY > 0 && e.clientX < innerWidth - 1 && e.clientY < innerHeight - 1
+      if (inside) return
+      cursor.current = null
+      report(false)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseleave', onLeave)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseleave', onLeave)
+    }
+  }, [])
+
+  // The bubble came or went under a still cursor: check again without waiting for a move.
+  useEffect(() => {
+    const c = cursor.current
+    requestAnimationFrame(() => report(c !== null && overPong(c.x, c.y)))
+  }, [state])
 
   const { mood, bubble } = state
   const awake = mood !== 'sleep'

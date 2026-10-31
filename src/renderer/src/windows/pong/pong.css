@@ -184,3 +184,14 @@
     animation: none;
   }
 }
+
+/* Animations off: Pong's head and eyes switch moods instantly instead of sliding. */
+.pong-stage:not(.animated) svg * {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pong-stage svg * {
+    transition: none !important;
+  }
+}

@@ -1,4 +1,5 @@
-// Pong the turtle. Copied from docs/design/Pong.tsx; Phase 6 adds the animations.
+// Pong the turtle. Copied from docs/design/Pong.tsx. The animations (bob, hop,
+// sparkles) live in windows/pong/pong.css, under .animated (the Animations setting).
 // One SVG, six moods. The head slides in and out of the shell with a CSS transition.
 
 import type { CSSProperties } from "react";
@@ -218,7 +219,7 @@ export default function Pong({
           z
         </text>
       </g>
-      <g opacity={on("happy")} style={fade} fill={COLORS.flower}>
+      <g className="sparkles" opacity={on("happy")} style={fade} fill={COLORS.flower}>
         <path d="M12 30 L14.6 36.4 L21 39 L14.6 41.6 L12 48 L9.4 41.6 L3 39 L9.4 36.4 Z" />
         <path d="M78 22 L80 26.8 L84.8 28.8 L80 30.8 L78 35.6 L76 30.8 L71.2 28.8 L76 26.8 Z" />
         <path d="M114 26 L115.2 29 L118.2 30.2 L115.2 31.4 L114 34.4 L112.8 31.4 L109.8 30.2 L112.8 29 Z" />

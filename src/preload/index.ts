@@ -39,6 +39,7 @@ const api: PongApi = {
   },
   pongAction: (action) => ipcRenderer.invoke('pong:action', action),
   askNow: () => ipcRenderer.invoke('pong:askNow'),
+  setPongHover: (hover) => ipcRenderer.invoke('pong:hover', hover),
 
   addEntry: (entry) => ipcRenderer.invoke('entries:add', entry),
   entriesByDate: (date) => ipcRenderer.invoke('entries:byDate', date),
