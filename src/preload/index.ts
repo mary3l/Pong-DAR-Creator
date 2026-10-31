@@ -35,6 +35,7 @@ const api: PongApi = {
   setDayStatus: (date, type) => ipcRenderer.invoke('dayStatus:set', date, type),
 
   buildGrid: (period) => ipcRenderer.invoke('grid:build', period),
+  exportDar: (period, replace) => ipcRenderer.invoke('dar:export', period, replace),
   seedFromSample: () => ipcRenderer.invoke('dev:seed')
 }
 

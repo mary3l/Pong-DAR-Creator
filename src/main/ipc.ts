@@ -12,13 +12,16 @@
 // Treat them like input from the internet: TypeScript types vanish at runtime, so
 // nothing stops a buggy renderer from sending { text: 42 }.
 import { app, ipcMain } from 'electron'
+import { existsSync } from 'node:fs'
+import { copyFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
+import { exportDar } from './export'
 import * as q from './queries'
 import { readDarSheet, seedDatabase } from './seed'
 import { hideWindow, showWindow } from './windows'
-import { buildGrid } from '../shared/cutoff'
-import { isIsoDate } from '../shared/dates'
+import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
+import { isIsoDate, localDate } from '../shared/dates'
 import { isWindowLabel } from '../shared/windowLabel'
 import type { Category, DayType, NewEntry, Period, Profile } from '../shared/types'
 
@@ -46,6 +49,9 @@ const isId = (v: unknown): v is number => typeof v === 'number' && Number.isInte
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const isPeriod = (v: unknown): v is Period =>
   isObject(v) && isIsoDate(v.start) && isIsoDate(v.end) && v.start <= v.end
+// A real cutoff (3rd-17th or 18th-2nd), not just any two dates: one sheet per cutoff.
+const isCutoff = (v: unknown): v is Period =>
+  isPeriod(v) && periodFor(v.start).start === v.start && periodFor(v.start).end === v.end
 
 // Checks every field of a NewEntry. Optional fields may be missing (undefined) or null.
 function checkNewEntry(v: unknown): asserts v is NewEntry {
@@ -65,6 +71,31 @@ function checkProfile(v: unknown): asserts v is Partial<Profile> {
     check(PROFILE_KEYS.includes(key as keyof Profile), `profile.${key}`)
     check(value === null || (typeof value === 'string' && value.length <= 300), `profile.${key}`)
   }
+}
+
+// The DAR grid for one cutoff: four queries in, one pure function out.
+function gridFor(db: DatabaseSync, period: Period): DarGrid {
+  return buildGrid(
+    period,
+    q.entriesInPeriod(db, period),
+    q.listDuties(db),
+    q.listOutputs(db),
+    q.dayStatusInPeriod(db, period)
+  )
+}
+
+// Phase 2: exports go ONLY into a copy of the sample, %TEMP%\Pong\MABANO_DAR_copy.xlsx.
+// The first export makes the copy; later ones add to it. Delete it to start fresh.
+// Phase 8 switches this to your real workbook (profile.workbookPath).
+async function exportTarget(): Promise<string> {
+  const sample = join(app.getAppPath(), 'docs/reference/MABANO_DAR_sample.xlsx')
+  const dir = join(app.getPath('temp'), 'Pong')
+  const path = join(dir, 'MABANO_DAR_copy.xlsx')
+  if (!existsSync(path)) {
+    await mkdir(dir, { recursive: true }) // recursive: no error if it already exists
+    await copyFile(sample, path)
+  }
+  return path
 }
 
 // Called once from index.ts, after the database is open.
@@ -139,16 +170,22 @@ export function registerIpc(db: DatabaseSync): void {
     q.setDayStatus(db, date, type as DayType | null)
   })
 
-  // the DAR grid for one cutoff: four queries in, one pure function out
+  // the DAR grid for one cutoff
   ipcMain.handle('grid:build', (_e, period: unknown) => {
     check(isPeriod(period), 'period')
-    return buildGrid(
-      period,
-      q.entriesInPeriod(db, period),
-      q.listDuties(db),
-      q.listOutputs(db),
-      q.dayStatusInPeriod(db, period)
-    )
+    return gridFor(db, period)
+  })
+
+  // Phase 2: add the cutoff's sheet to the workbook. `replace` = overwrite a sheet that
+  // already has this name. Async: reading and writing the workbook takes a few seconds.
+  ipcMain.handle('dar:export', async (_e, period: unknown, replace: unknown) => {
+    check(isCutoff(period), 'period')
+    check(typeof replace === 'boolean', 'replace')
+    if (app.isPackaged) throw new Error('Export is only available in development until Phase 8')
+    return exportDar(await exportTarget(), gridFor(db, period), q.getProfile(db), {
+      submitted: localDate(),
+      replace
+    })
   })
 
   // dev only: replace everything with the sample DAR's data

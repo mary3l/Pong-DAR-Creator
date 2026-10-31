@@ -61,6 +61,12 @@ export function sheetName(period: Period): string {
   return `${startPart} - ${endPart}`
 }
 
+// "Date Submitted" in L9: '2026-10-22' -> "October 22, 2026".
+export function longDate(date: string): string {
+  const d = fromIso(date)
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`
+}
+
 // Past days in today's period with no notes and no day_status row: Pong asks about these.
 // Pick<Entry, 'workDate'> = "any object with at least a workDate", so callers can pass
 // full entries or just { workDate } in tests.

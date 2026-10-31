@@ -9,6 +9,7 @@ import type { DarGrid } from "../../../../shared/cutoff";
 import type { Entry } from "../../../../shared/types";
 
 // Phase 1 only: proves renderer -> preload -> main -> SQLite works. Phase 5 removes it.
+// Phase 2 adds the "Export to a copy" button.
 export default function DbCheck() {
   const today = localDate();
 
@@ -51,6 +52,31 @@ export default function DbCheck() {
       );
     } catch (error) {
       setMessage(String(error));
+    }
+  }
+
+  // Phase 2: add the grid's cutoff as a new sheet in a copy of the sample workbook
+  // (%TEMP%\Pong\MABANO_DAR_copy.xlsx). Main does the work; this only asks and reports.
+  async function exportCopy() {
+    if (!grid) return;
+    setMessage("Exporting... (a few seconds: the whole workbook is rewritten)");
+    try {
+      const result = await exportOrReplace(grid);
+      setMessage(`Added "${result.sheetName}" to ${result.path}`);
+    } catch (error) {
+      setMessage(String(error));
+    }
+  }
+
+  // First try without replacing. If that cutoff already has a sheet, ask before
+  // overwriting it. confirm() shows a simple OK/Cancel box.
+  async function exportOrReplace(g: DarGrid) {
+    try {
+      return await window.pong.exportDar(g.period, false);
+    } catch (error) {
+      const exists = String(error).includes("already has a sheet");
+      if (!exists || !confirm(`Replace the sheet "${g.sheetName}"?`)) throw error;
+      return await window.pong.exportDar(g.period, true);
     }
   }
 
@@ -107,6 +133,9 @@ export default function DbCheck() {
         }}
       >
         <button onClick={seed}>Seed from sample DAR</button>
+        <button onClick={exportCopy} disabled={!grid}>
+          Export to a copy
+        </button>
         <span style={{ color: "var(--muted)", fontSize: 13.5 }}>{message}</span>
       </div>
 

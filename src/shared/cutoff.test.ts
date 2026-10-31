@@ -1,7 +1,7 @@
 // cutoff.test.ts: the rules of the DAR, written as checks.
 // Each test name says the rule, so when one fails, its name tells you what broke.
 import { describe, expect, it } from 'vitest'
-import { buildGrid, daysIn, missedDays, periodFor, sheetName } from './cutoff'
+import { buildGrid, daysIn, longDate, missedDays, periodFor, sheetName } from './cutoff'
 import type { Duty, Entry, Output, Progress } from './types'
 
 describe('periodFor', () => {
@@ -34,6 +34,13 @@ describe('sheetName', () => {
     expect(sheetName({ start: '2026-10-03', end: '2026-10-17' })).toBe('October 3 - 17')
     expect(sheetName({ start: '2026-10-18', end: '2026-11-02' })).toBe('October 18 - November 2')
     expect(sheetName({ start: '2026-12-18', end: '2027-01-02' })).toBe('December 18 - January 2')
+  })
+})
+
+describe('longDate', () => {
+  it('writes the date the way L9 shows it', () => {
+    expect(longDate('2026-10-22')).toBe('October 22, 2026')
+    expect(longDate('2027-01-02')).toBe('January 2, 2027') // no leading zero
   })
 })
 

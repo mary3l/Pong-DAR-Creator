@@ -5,7 +5,9 @@
 //   main/ipc.ts       has one ipcMain.handle per method
 // Adding a feature = one line here, one in the preload, one handler in ipc.ts.
 import type { DarGrid } from './cutoff'
-import type { Category, DayStatus, DayType, Duty, Entry, NewEntry, Output, Period, Profile } from './types'
+import type {
+  Category, DayStatus, DayType, Duty, Entry, ExportResult, NewEntry, Output, Period, Profile
+} from './types'
 import type { WindowLabel } from './windowLabel'
 
 // Everything the renderer may ask of the main process. The preload implements this
@@ -33,5 +35,6 @@ export interface PongApi {
   setDayStatus(date: string, type: DayType | null): Promise<void> // null clears the day
 
   buildGrid(period: Period): Promise<DarGrid>
+  exportDar(period: Period, replace: boolean): Promise<ExportResult> // adds the cutoff's sheet (Phase 2)
   seedFromSample(): Promise<{ duties: number; outputs: number; entries: number }> // dev only
 }

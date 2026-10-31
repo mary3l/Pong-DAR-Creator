@@ -81,3 +81,10 @@ export interface Period {
   start: string
   end: string
 }
+
+// What an export tells the renderer: which sheet it added, and where the files are.
+export interface ExportResult {
+  sheetName: string // "October 18 - November 2"
+  path: string // the workbook that now has the new sheet
+  backupPath: string // <name>.bak.xlsx, the workbook as it was before
+}
