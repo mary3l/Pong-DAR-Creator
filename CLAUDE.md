@@ -40,6 +40,7 @@ src/
     seed.ts          dev only: seed from the sample DAR
     workbook.ts      first run: read duties, MFOs, header from the newest sheet (read only)
     export.ts        DAR sheet writer (ExcelJS), undo from .bak
+    git.ts           your commits from local repos (git log via execFile), for note suggestions
     scheduler.ts     check-in clock + pause/snooze (rules in shared/schedule.ts)
     pong.ts          Pong's mood and bubble, pushed to the pong window
     idle.ts          idle, lock/sleep, full screen (koffi)
@@ -56,6 +57,7 @@ src/
     dates.ts         local dates as 'YYYY-MM-DD', UTC-safe math
     cutoff.ts        period math, DAR grid builder, missed-day wording
     schedule.ts      "is a check-in due?" (tick)
+    gitlog.ts        git log output -> commit suggestions, time window, de-dupe
     settings.ts      Settings type, defaults, validation
     placement.ts     taskbar edge + pong window bounds
     types.ts         Entry, Duty, Output, DayStatus, Period, PongState ...
@@ -65,7 +67,7 @@ src/
     src/windows/pong/      turtle + bubble + toasts, click-through hover reports
     src/windows/checkin/   entry card, missed-day card
     src/windows/main/      first run, Today, Cutoff, Tasks, Settings
-    src/components/        Pong.tsx, TaskPicker, PercentPicker, useTasks
+    src/components/        Pong.tsx, TaskPicker, PercentPicker, CommitSuggestions, useTasks
 scripts/make-icons.mjs  npm run icons: build/pong.svg -> build/icon.png, tray.png, tray@2x.png
 docs/reference/MABANO_DAR_sample.xlsx   read-only copy of the real workbook
 docs/design/Pong.tsx                    turtle reference
@@ -135,6 +137,7 @@ Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA use
 - Entry card: one-line input; 5 most recent MFOs as chips + "+ New task"; % buttons 25/50/75/100; last MFO and % preselected; Enter saves, Esc hides.
 - Missed days: on the first check-in of a day, ask about each missed day, oldest first. "Rest day yesterday?" (or "Rest day on Saturday?"). Yes -> Rest day / Sick leave / Personal leave -> Save writes day_status. No -> entry card for that date; add several logs; "Done with <day>".
 - Hotkeys: Ctrl+Alt+L log, Ctrl+Alt+K open main window, Ctrl+Alt+P pause 1 hour (Electron accelerators `Control+Alt+L` etc.).
+- Commit suggestions: local git repos only (settings.repos), never GitHub or any network. Your commits (repo user.email, --all, --no-merges) since the last note today, or the whole day on the missed-day card. Picking one fills the note and the repo's usual task; the user still picks the % and saves. New repo paths only come from the folder dialog in main.
 - Stay quiet: outside work hours (default 8:00-17:00, Mon-Fri), lunch 12:00-13:00, idle 10+ min, full-screen foreground app, paused.
 - Colors: shell #5E9E6E, skin #A9D69B, flower #F5B83D, teal #2F7F7A, mint #DCEBE4, ink #2A2622.
 

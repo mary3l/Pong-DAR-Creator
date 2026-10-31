@@ -19,6 +19,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { backupNow, lastBackup } from './backup'
 import { events } from './events'
 import { exportDar, undoExport } from './export'
+import { commitsIn, gitInstalled, repoRoot } from './git'
 import { act, missedDone, pongState } from './pong'
 import * as q from './queries'
 import { askNow, nextCheckin } from './scheduler'
@@ -27,7 +28,8 @@ import { importFromWorkbook } from './workbook'
 import { readDarSheet, seedDatabase } from './seed'
 import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, send, setPongHover, showWindow } from './windows'
 import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
-import { isIsoDate, localDate } from '../shared/dates'
+import { isIsoDate, localDate, localTimestamp } from '../shared/dates'
+import { commitWindow, mergeSuggestions } from '../shared/gitlog'
 import { isWindowLabel } from '../shared/windowLabel'
 import { isTime, type Settings } from '../shared/settings'
 import type { Category, DayType, EntryChanges, ExportResult, NewEntry, PongAction, Period, Profile } from '../shared/types'
@@ -297,7 +299,39 @@ export function registerIpc(db: DatabaseSync): void {
   ipcMain.handle('settings:get', () => getSettings())
   ipcMain.handle('settings:set', (_e, changes: unknown) => {
     check(isObject(changes), 'settings')
+    // The renderer may reorder, remove, or change a repo's task, but never name a new
+    // folder: new repos only come from the folder picker below.
+    if ('repos' in changes && Array.isArray(changes.repos)) {
+      const known = new Set(getSettings().repos.map((r) => r.path))
+      check(changes.repos.every((r) => isObject(r) && known.has(r.path as string)), 'repos')
+    }
     return saveSettings(changes as Partial<Settings>)
+  })
+
+  // ---- git: your commits as note suggestions (local repos only, no GitHub)
+
+  // Settings, Git: pick a folder with Windows' own dialog. Any folder inside a repo is
+  // fine; Pong keeps the repo's top folder.
+  ipcMain.handle('git:addRepo', async (event) => {
+    const owner = BrowserWindow.fromWebContents(event.sender)
+    const options: Electron.OpenDialogOptions = { title: 'A git repo you work in', properties: ['openDirectory'] }
+    const picked = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options)
+    if (picked.canceled || !picked.filePaths[0]) return getSettings()
+    const root = await repoRoot(picked.filePaths[0])
+    if (!root) throw new Error(`${basename(picked.filePaths[0])} isn't a git repo (no .git folder in it or above it).`)
+    const path = join(root) // git answers with forward slashes; join() gives the Windows form
+    const repos = getSettings().repos
+    if (repos.some((r) => r.path.toLowerCase() === path.toLowerCase())) return getSettings()
+    return saveSettings({ repos: [...repos, { path, outputId: null }] })
+  })
+  ipcMain.handle('git:installed', () => gitInstalled())
+  // Commits for one day: today since your last note, or a whole past day (missed days).
+  ipcMain.handle('git:suggestions', async (_e, date: unknown) => {
+    check(isIsoDate(date), 'date')
+    const notes = q.entriesByDate(db, date)
+    const { since, until } = commitWindow(date, localTimestamp(), notes)
+    const lists = await Promise.all(getSettings().repos.map((repo) => commitsIn(repo, since, until)))
+    return mergeSuggestions(lists, notes)
   })
   // First run and Settings: pick the DAR workbook with Windows' own Open dialog. Main
   // shows the dialog and keeps the path, so the renderer never handles file paths. The

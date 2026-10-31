@@ -20,6 +20,7 @@ const SECTIONS = [
   { id: 'install', title: 'Install Pong' },
   { id: 'setup', title: 'First run' },
   { id: 'daily', title: 'Every day: check-ins' },
+  { id: 'git', title: 'Your commits as notes' },
   { id: 'missed', title: 'Days with no notes' },
   { id: 'today', title: 'Today: fix or add notes' },
   { id: 'tasks', title: 'Tasks: duties and MFOs' },
@@ -38,12 +39,12 @@ export default function HelpView() {
     window.pong.appInfo().then((info) => setDataFolder(info.dataFolder))
   }, [])
 
-  const Section = (props: { id: string; n: number; children: ReactNode }) => (
+  const Section = (props: { id: string; children: ReactNode }) => (
     <section className="box help-section" ref={(el) => {
         refs.current[props.id] = el
       }}>
       <h3>
-        <span className="step-num">{props.n}</span>
+        <span className="step-num">{SECTIONS.findIndex((s) => s.id === props.id) + 1}</span>
         {SECTIONS.find((s) => s.id === props.id)?.title}
       </h3>
       {props.children}
@@ -82,7 +83,7 @@ export default function HelpView() {
           ))}
         </div>
 
-        <Section id="install" n={1}>
+        <Section id="install">
           <ol>
             <li>
               Run <b>Pong-1.0.0-setup.exe</b>. It installs for your Windows account only, so no admin password is
@@ -96,7 +97,7 @@ export default function HelpView() {
           </ol>
         </Section>
 
-        <Section id="setup" n={2}>
+        <Section id="setup">
           <p>The first time, Pong shows a short setup form instead of the tabs.</p>
           <ol>
             <li>
@@ -118,7 +119,7 @@ export default function HelpView() {
           </div>
         </Section>
 
-        <Section id="daily" n={3}>
+        <Section id="daily">
           <p>
             Pong naps on the right side of the taskbar. On work days, during work hours, he peeks out about once an hour
             and asks <b>What are you up to?</b> The first question comes 5 to 10 minutes after work starts, and again
@@ -156,7 +157,32 @@ export default function HelpView() {
           </p>
         </Section>
 
-        <Section id="missed" n={4}>
+        <Section id="git">
+          <p>
+            If you write code, Pong can read what you committed in your git repos and offer it as a note. It reads
+            the repos on this PC only, never GitHub, so it works offline and nothing is sent anywhere.
+          </p>
+          <ol>
+            <li>
+              Settings, <b>Git repos</b>, <b>+ Add repo folder…</b>: pick each project folder you commit in.
+            </li>
+            <li>
+              Optional: pick each repo's <b>usual task</b>, the DAR task its commits normally count toward.
+            </li>
+            <li>
+              In the check-in card, <b>From your commits</b> lists what you committed since your last note today (on
+              the missed-day card: what you committed that day). Click one: its message becomes the note and the
+              repo's usual task is picked. Edit the words if your team leader wouldn't follow them, choose the %, and
+              save.
+            </li>
+          </ol>
+          <div className="help-tip">
+            Only your own commits show (the repo's user.email), from every branch, including ones not pushed yet.
+            Merges are left out, and a commit you already used as a note doesn't show again.
+          </div>
+        </Section>
+
+        <Section id="missed">
           <p>
             If a past day in the current cutoff has no notes and isn't marked off, Pong's next question becomes{' '}
             <b>Good morning! I didn't hear from you on …</b> Click <b>Fill them in</b>. Pong asks about each day, oldest
@@ -178,7 +204,7 @@ export default function HelpView() {
           </p>
         </Section>
 
-        <Section id="today" n={5}>
+        <Section id="today">
           <ul>
             <li>
               <b>Today</b> lists your notes with their times, tasks and %. The panel on the right shows the highest % per
@@ -196,7 +222,7 @@ export default function HelpView() {
           </ul>
         </Section>
 
-        <Section id="tasks" n={6}>
+        <Section id="tasks">
           <p>
             The <b>Tasks</b> tab holds the rows of your DAR: duties under <b>A.) Specific duties</b> and{' '}
             <b>B.) Support functions</b>, each with its tasks (MFOs).
@@ -213,7 +239,7 @@ export default function HelpView() {
           </ul>
         </Section>
 
-        <Section id="cutoff" n={7}>
+        <Section id="cutoff">
           <p>
             Cutoffs run from the <b>3rd to the 17th</b>, and from the <b>18th to the 2nd</b> of the next month. The{' '}
             <b>Cutoff (DAR)</b> tab shows the sheet the way it will look in Excel.
@@ -259,7 +285,7 @@ export default function HelpView() {
           </div>
         </Section>
 
-        <Section id="settings" n={8}>
+        <Section id="settings">
           <table className="help-table">
             <tbody>
               <tr>
@@ -291,7 +317,7 @@ export default function HelpView() {
           </table>
         </Section>
 
-        <Section id="keys" n={9}>
+        <Section id="keys">
           <table className="help-table">
             <tbody>
               <tr>
@@ -327,7 +353,7 @@ export default function HelpView() {
           </p>
         </Section>
 
-        <Section id="data" n={10}>
+        <Section id="data">
           <p>
             Everything stays on this PC, in <code>{dataFolder}</code> (Settings, General, <b>Open folder</b>):
           </p>
@@ -353,7 +379,7 @@ export default function HelpView() {
           </p>
         </Section>
 
-        <Section id="trouble" n={11}>
+        <Section id="trouble">
           <table className="help-table">
             <tbody>
               <tr>

@@ -2,15 +2,17 @@
 // Settings are saved as you change them (window.pong.setSettings -> settings.json in main).
 // The DAR profile lives in the database (window.pong.setProfile), like in Phase 1.
 import { useEffect, useState, type ReactNode } from 'react'
-import { INTERVALS, type Settings } from '../../../../shared/settings'
+import { useTasks } from '../../components/useTasks'
+import { INTERVALS, type GitRepo, type Settings } from '../../../../shared/settings'
 import type { Profile } from '../../../../shared/types'
 import './settings.css'
 
-type Section = 'checkins' | 'shortcuts' | 'dar' | 'general'
+type Section = 'checkins' | 'shortcuts' | 'dar' | 'git' | 'general'
 const NAV: { id: Section; label: string }[] = [
   { id: 'checkins', label: 'Check-ins' },
   { id: 'shortcuts', label: 'Shortcuts' },
   { id: 'dar', label: 'DAR profile' },
+  { id: 'git', label: 'Git repos' },
   { id: 'general', label: 'General' }
 ]
 // Monday first, as on the board. Numbers are getDay(): 0 = Sunday.
@@ -50,6 +52,7 @@ export default function SettingsView() {
         {section === 'checkins' && <CheckinSettings settings={settings} save={save} />}
         {section === 'shortcuts' && <ShortcutSettings />}
         {section === 'dar' && <ProfileSettings />}
+        {section === 'git' && <GitSettings settings={settings} onChange={setSettings} save={save} />}
         {section === 'general' && <GeneralSettings settings={settings} save={save} />}
       </div>
     </div>
@@ -365,6 +368,95 @@ function GeneralSettings(props: { settings: Settings; save: (c: Partial<Settings
           <span className="muted">{message}</span>
         </div>
       )}
+    </>
+  )
+}
+
+// Git repos: folders whose commits show up as "From your commits" in the check-in card.
+// Local only: Pong reads each repo's own history with git, never GitHub.
+function GitSettings(props: {
+  settings: Settings
+  onChange: (s: Settings) => void
+  save: (c: Partial<Settings>) => void
+}) {
+  const { settings: s, save } = props
+  const tasks = useTasks()
+  const [installed, setInstalled] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    window.pong.gitInstalled().then(setInstalled)
+  }, [])
+
+  async function add() {
+    try {
+      props.onChange(await window.pong.addRepo())
+      setError('')
+    } catch (e) {
+      setError(String(e).replace(/^.*Error: /, ''))
+    }
+  }
+
+  const update = (repo: GitRepo, changes: Partial<GitRepo> | null) =>
+    save({
+      repos: changes === null ? s.repos.filter((r) => r !== repo) : s.repos.map((r) => (r === repo ? { ...r, ...changes } : r))
+    })
+
+  const activeDuties = tasks.duties.filter((d) => !d.archived)
+  const folderName = (path: string) => path.split(/[\/]/).filter(Boolean).at(-1) ?? path
+
+  return (
+    <>
+      <Heading
+        title="Git repos"
+        sub="Your commits since the last note show up in the check-in card. Pick one and it becomes the note."
+      />
+      {!installed && (
+        <span className="error">Git isn't installed on this PC (or not on PATH), so Pong can't read commits.</span>
+      )}
+      <div className="box group">
+        {s.repos.length === 0 && (
+          <Row label="No repos yet" hint="Add the project folders you commit in, e.g. pong-dar or dcwd_pip-frontend.">
+            <span />
+          </Row>
+        )}
+        {s.repos.map((repo) => (
+          <Row key={repo.path} label={folderName(repo.path)} hint={repo.path}>
+            <div className="row">
+              <select
+                aria-label={`Usual task for ${folderName(repo.path)}`}
+                value={repo.outputId ?? ''}
+                onChange={(e) => update(repo, { outputId: e.target.value === '' ? null : Number(e.target.value) })}
+                style={{ height: 40, maxWidth: 280, borderRadius: 10, border: '2px solid var(--field)', font: 'inherit', fontSize: 13.5 }}
+              >
+                <option value="">No usual task</option>
+                {activeDuties.map((d) => (
+                  <optgroup key={d.id} label={d.title}>
+                    {tasks.outputs
+                      .filter((o) => o.dutyId === d.id && o.status === 'active')
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.title}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+              <button onClick={() => update(repo, null)}>Remove</button>
+            </div>
+          </Row>
+        ))}
+      </div>
+      <div className="row">
+        <button className="primary" onClick={add}>
+          + Add repo folder…
+        </button>
+      </div>
+      {error && <span className="error">{error}</span>}
+      <span className="muted" style={{ fontSize: 13 }}>
+        Only your own commits count (the repo's user.email), from every branch, merges left out. The usual task is
+        picked for you when you choose one of that repo's commits; you still choose the %. Nothing is sent anywhere.
+      </span>
     </>
   )
 }

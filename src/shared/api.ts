@@ -9,6 +9,7 @@ import type {
   Category, CheckinRequest, DayStatus, DayType, Duty, Entry, EntryChanges, ExportRecord, ExportResult, NewEntry,
   Output, Period, PongAction, PongState, Profile
 } from './types'
+import type { CommitSuggestion } from './gitlog'
 import type { Settings } from './settings'
 import type { WindowLabel } from './windowLabel'
 
@@ -70,6 +71,10 @@ export interface PongApi {
   backupNow(): Promise<{ path: string; at: number }>
   backupInfo(): Promise<{ last: number | null }>
   openDataFolder(): Promise<void>
+  // Git (local repos): your commits as note suggestions
+  addRepo(): Promise<Settings> // folder picker in main; returns the settings with the new repo
+  gitInstalled(): Promise<boolean>
+  commitSuggestions(date: string): Promise<CommitSuggestion[]> // today since the last note, or a past day
   getSettings(): Promise<Settings>
   setSettings(changes: Partial<Settings>): Promise<Settings> // merges and saves; returns all
   seedFromSample(): Promise<{ duties: number; outputs: number; entries: number }> // dev only

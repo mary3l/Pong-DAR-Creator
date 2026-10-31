@@ -5,9 +5,11 @@
 import { useRef, useState, type FormEvent } from 'react'
 import PercentPicker from '../../components/PercentPicker'
 import TaskPicker from '../../components/TaskPicker'
+import CommitSuggestions from '../../components/CommitSuggestions'
 import { useTasks } from '../../components/useTasks'
 import { DAY_OFF_LABEL, dayLong, missedQuestion, weekdayName } from '../../../../shared/cutoff'
 import { isWeekend, localDate } from '../../../../shared/dates'
+import type { CommitSuggestion } from '../../../../shared/gitlog'
 import type { DayType, Entry, Progress } from '../../../../shared/types'
 import { CloseButton } from './EntryCard'
 
@@ -62,6 +64,16 @@ export default function MissedCard(props: { days: string[]; onFinished: () => vo
       setOutputId(tasks.last.outputId)
       if (tasks.last.progress) setProgress(tasks.last.progress)
     }
+  }
+
+  // A commit picked from "From your commits": its message becomes the note, and the
+  // repo's usual task is picked (if it's still an active task).
+  function pickCommit(commit: CommitSuggestion) {
+    setText(commit.subject)
+    setError('')
+    const output = tasks.outputs.find((o) => o.id === commit.outputId && o.status === 'active')
+    if (output) setOutputId(output.id)
+    input.current?.focus()
   }
 
   async function saveLeave() {
@@ -214,6 +226,7 @@ export default function MissedCard(props: { days: string[]; onFinished: () => vo
               }}
             />
           </label>
+          <CommitSuggestions date={day} refresh={logs.length} onPick={pickCommit} />
           <TaskPicker tasks={tasks} value={outputId} onChange={setOutputId} />
           {outputId !== null && <PercentPicker value={progress} onChange={setProgress} />}
           {error && <span className="error">{error}</span>}

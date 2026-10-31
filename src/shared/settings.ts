@@ -2,6 +2,13 @@
 // main/settings.ts stores them as JSON in userData; the Settings screen edits them.
 // Pure types and data, so the scheduler's tests and the renderer can use them too.
 
+// A git repo on this PC whose commits Pong suggests as notes. outputId: the DAR task
+// its commits usually count toward (preselected when you pick one), or null.
+export interface GitRepo {
+  path: string
+  outputId: number | null
+}
+
 export interface Settings {
   // Check-ins
   intervalMin: 30 | 45 | 60 | 90 // "Ask me every"
@@ -20,6 +27,8 @@ export interface Settings {
   spot: 'taskbar' | 'tray' // Pong on the taskbar, or only the tray icon
   setupDone: boolean // false until the first-run form is saved
   startedOn: string // 'YYYY-MM-DD' of the first run; days before it are never "missed"
+  // Git
+  repos: GitRepo[] // commits from these folders show as suggestions in the check-in card
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -37,7 +46,8 @@ export const DEFAULT_SETTINGS: Settings = {
   animations: true,
   spot: 'taskbar',
   setupDone: false,
-  startedOn: ''
+  startedOn: '',
+  repos: []
 }
 
 export const INTERVALS: Settings['intervalMin'][] = [30, 45, 60, 90]
@@ -73,6 +83,23 @@ export function settingsError(changes: Record<string, unknown>): string | null {
         break
       case 'startedOn':
         if (typeof value !== 'string' || !/^(\d{4}-\d{2}-\d{2})?$/.test(value)) return key
+        break
+      case 'repos':
+        if (
+          !Array.isArray(value) ||
+          value.length > 30 ||
+          !value.every(
+            (r) =>
+              typeof r === 'object' &&
+              r !== null &&
+              typeof r.path === 'string' &&
+              r.path.length > 0 &&
+              r.path.length <= 500 &&
+              (r.outputId === null || (Number.isInteger(r.outputId) && r.outputId > 0)) &&
+              Object.keys(r).length === 2
+          )
+        )
+          return key
         break
       case 'spot':
         if (value !== 'taskbar' && value !== 'tray') return key

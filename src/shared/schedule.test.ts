@@ -98,5 +98,10 @@ describe('settingsError', () => {
     expect(settingsError({ workDays: [7] })).toBe('workDays')
     expect(settingsError({ animations: 'yes' })).toBe('animations')
     expect(settingsError({ hacker: true })).toBe('hacker')
+    expect(settingsError({ repos: [{ path: 'C:/code/pong-dar', outputId: null, extra: 1 }] })).toBe('repos')
+    expect(settingsError({ repos: [{ path: '', outputId: null }] })).toBe('repos')
+  })
+  it('accepts repos with or without a task', () => {
+    expect(settingsError({ repos: [{ path: 'C:/code/pong-dar', outputId: 3 }, { path: 'D:/pip', outputId: null }] })).toBeNull()
   })
 })

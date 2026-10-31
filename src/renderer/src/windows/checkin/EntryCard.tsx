@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import PercentPicker from '../../components/PercentPicker'
 import TaskPicker from '../../components/TaskPicker'
+import CommitSuggestions from '../../components/CommitSuggestions'
 import { useTasks } from '../../components/useTasks'
+import { localDate } from '../../../../shared/dates'
+import type { CommitSuggestion } from '../../../../shared/gitlog'
 import type { EntrySource, Progress } from '../../../../shared/types'
 
 const now = (): string =>
@@ -33,6 +36,16 @@ export default function EntryCard(props: { source: EntrySource; onDone: () => vo
     window.addEventListener('focus', focus)
     return () => window.removeEventListener('focus', focus)
   }, [])
+
+  // A commit picked from "From your commits": its message becomes the note, and the
+  // repo's usual task is picked (if it's still an active task).
+  function pickCommit(commit: CommitSuggestion) {
+    setText(commit.subject)
+    setError('')
+    const output = tasks.outputs.find((o) => o.id === commit.outputId && o.status === 'active')
+    if (output) setOutputId(output.id)
+    input.current?.focus()
+  }
 
   async function save(event?: FormEvent) {
     event?.preventDefault()
@@ -80,6 +93,7 @@ export default function EntryCard(props: { source: EntrySource; onDone: () => vo
         />
       </label>
 
+      <CommitSuggestions date={localDate()} onPick={pickCommit} />
       <TaskPicker tasks={tasks} value={outputId} onChange={setOutputId} />
 
       {outputId !== null && (
