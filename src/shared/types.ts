@@ -65,9 +65,26 @@ export interface Entry {
 export interface NewEntry {
   text: string
   workDate?: string
+  time?: string // 'HH:MM': a note added later for an earlier time (Today view)
   outputId?: number | null
   progress?: Progress | null
   source?: EntrySource
+}
+
+// What can change on a saved note (Today view: edit).
+export interface EntryChanges {
+  text?: string
+  outputId?: number | null
+  progress?: Progress | null
+  time?: string // 'HH:MM'
+}
+
+// One row of the exports table: a sheet Pong added to the workbook.
+export interface ExportRecord {
+  periodStart: string
+  periodEnd: string
+  sheetName: string
+  exportedAt: string // local timestamp
 }
 
 // A day you marked as off (sick leave etc.). One per date at most.

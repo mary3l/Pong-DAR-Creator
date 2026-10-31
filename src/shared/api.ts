@@ -6,9 +6,10 @@
 // Adding a feature = one line here, one in the preload, one handler in ipc.ts.
 import type { DarGrid } from './cutoff'
 import type {
-  Category, CheckinRequest, DayStatus, DayType, Duty, Entry, ExportResult, NewEntry, Output, Period,
-  PongAction, PongState, Profile
+  Category, CheckinRequest, DayStatus, DayType, Duty, Entry, EntryChanges, ExportRecord, ExportResult, NewEntry,
+  Output, Period, PongAction, PongState, Profile
 } from './types'
+import type { Settings } from './settings'
 import type { WindowLabel } from './windowLabel'
 
 // Everything the renderer may ask of the main process. The preload implements this
@@ -37,6 +38,8 @@ export interface PongApi {
   entriesByDate(date: string): Promise<Entry[]>
   entriesInPeriod(period: Period): Promise<Entry[]>
   lastTagged(): Promise<Entry | null> // newest note with an MFO: the card preselects it
+  updateEntry(id: number, changes: EntryChanges): Promise<Entry | null>
+  deleteEntry(id: number): Promise<void>
 
   listDuties(): Promise<Duty[]>
   addDuty(category: Category, title: string): Promise<Duty>
@@ -53,5 +56,15 @@ export interface PongApi {
 
   buildGrid(period: Period): Promise<DarGrid>
   exportDar(period: Period, replace: boolean): Promise<ExportResult> // adds the cutoff's sheet (Phase 2)
+  exportTarget(): Promise<{ name: string; exists: boolean }> // the workbook exports go to
+  lastExport(period: Period): Promise<ExportRecord | null>
+  openWorkbook(): Promise<void> // in Excel
+  undoExport(): Promise<void> // puts the .bak back
+  nextCheckin(): Promise<number | null> // ms timestamp, null outside work time
+  appInfo(): Promise<{ version: string; packaged: boolean; dataFolder: string }>
+  onDataChanged(callback: () => void): () => void // notes or days off changed somewhere
+
+  getSettings(): Promise<Settings>
+  setSettings(changes: Partial<Settings>): Promise<Settings> // merges and saves; returns all
   seedFromSample(): Promise<{ duties: number; outputs: number; entries: number }> // dev only
 }

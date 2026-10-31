@@ -504,3 +504,13 @@ async function saveSafely(workbook: ExcelJS.Workbook, path: string, grid: DarGri
   }
   return { sheetName: grid.sheetName, path, backupPath }
 }
+
+// Puts the workbook back as it was before an export, from the .bak saveSafely() kept.
+export async function undoExport(result: ExportResult): Promise<void> {
+  await checkNotLocked(result.path)
+  try {
+    await copyFile(result.backupPath, result.path)
+  } catch (error) {
+    throw friendly(error, result.path)
+  }
+}

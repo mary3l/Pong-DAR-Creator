@@ -14,7 +14,9 @@
 // strings: a note like  it's done  would break the quotes. ? placeholders are always safe.
 import type { DatabaseSync } from 'node:sqlite'
 import { localDate, localTimestamp } from '../shared/dates'
-import type { Category, DayStatus, DayType, Duty, Entry, NewEntry, Output, Period, Profile } from '../shared/types'
+import type {
+  Category, DayStatus, DayType, Duty, Entry, EntryChanges, ExportRecord, NewEntry, Output, Period, Profile
+} from '../shared/types'
 
 // The column list for entries, renamed to match the Entry type. Written once, reused below.
 const ENTRY_COLUMNS = `id, created_at AS createdAt, work_date AS workDate, text,
@@ -33,7 +35,8 @@ export function addEntry(db: DatabaseSync, entry: NewEntry, now: Date = new Date
        VALUES (?, ?, ?, ?, ?, ?)`
     )
     .run(
-      localTimestamp(now),
+      // A note for an earlier time ("add a missed note") is stamped with that time.
+      entry.time ? `${entry.workDate ?? localDate(now)}T${entry.time}:00` : localTimestamp(now),
       entry.workDate ?? localDate(now), // ?? = "use the right side if the left is null/undefined"
       entry.text,
       entry.outputId ?? null, // SQLite needs null, not undefined, for an empty value
@@ -58,6 +61,29 @@ export function entriesInPeriod(db: DatabaseSync, period: Period): Entry[] {
   return db
     .prepare(`SELECT ${ENTRY_COLUMNS} FROM entries WHERE work_date BETWEEN ? AND ? ORDER BY created_at`)
     .all(period.start, period.end) as unknown as Entry[]
+}
+
+// Changes only the fields you pass. A new time keeps the note on its day.
+export function updateEntry(db: DatabaseSync, id: number, changes: EntryChanges): Entry | null {
+  const old = db.prepare(`SELECT ${ENTRY_COLUMNS} FROM entries WHERE id = ?`).get(id) as unknown as Entry | undefined
+  if (!old) return null
+  const next = { ...old, ...changes }
+  // `'key' in changes`: the renderer may set outputId to null on purpose (untag the note).
+  const createdAt = changes.time ? `${old.workDate}T${changes.time}:00` : old.createdAt
+  const outputId = 'outputId' in changes ? (changes.outputId ?? null) : old.outputId
+  const progress = outputId === null ? null : (next.progress ?? null) // no MFO, no %
+  db.prepare(`UPDATE entries SET text = ?, output_id = ?, progress = ?, created_at = ? WHERE id = ?`).run(
+    next.text,
+    outputId,
+    progress,
+    createdAt,
+    id
+  )
+  return db.prepare(`SELECT ${ENTRY_COLUMNS} FROM entries WHERE id = ?`).get(id) as unknown as Entry
+}
+
+export function deleteEntry(db: DatabaseSync, id: number): void {
+  db.prepare(`DELETE FROM entries WHERE id = ?`).run(id)
 }
 
 // ---- duties
@@ -207,4 +233,33 @@ export function setDayStatus(db: DatabaseSync, date: string, type: DayType | nul
        ON CONFLICT (date) DO UPDATE SET type = excluded.type`
     ).run(date, type)
   }
+}
+// ---- exports (a history of sheets added to the workbook)
+
+export function recordExport(db: DatabaseSync, period: Period, sheetName: string, now: Date = new Date()): void {
+  db.prepare(`INSERT INTO exports (period_start, period_end, sheet_name, exported_at) VALUES (?, ?, ?, ?)`).run(
+    period.start,
+    period.end,
+    sheetName,
+    localTimestamp(now)
+  )
+}
+
+// The newest export of one cutoff, or null if it was never exported.
+export function lastExport(db: DatabaseSync, period: Period): ExportRecord | null {
+  const row = db
+    .prepare(
+      `SELECT period_start AS periodStart, period_end AS periodEnd, sheet_name AS sheetName,
+         exported_at AS exportedAt
+       FROM exports WHERE period_start = ? AND period_end = ? ORDER BY id DESC LIMIT 1`
+    )
+    .get(period.start, period.end)
+  return (row as unknown as ExportRecord | undefined) ?? null
+}
+
+// Undo: the newest export of this cutoff never happened after all.
+export function forgetLastExport(db: DatabaseSync, period: Period): void {
+  db.prepare(
+    `DELETE FROM exports WHERE id = (SELECT MAX(id) FROM exports WHERE period_start = ? AND period_end = ?)`
+  ).run(period.start, period.end)
 }

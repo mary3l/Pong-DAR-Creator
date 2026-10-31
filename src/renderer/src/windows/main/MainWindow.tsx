@@ -1,68 +1,68 @@
-// MainWindow.tsx: what the main window shows. Runs in the RENDERER.
+// MainWindow.tsx: the main window. Runs in the RENDERER.
 // main.tsx picks this screen when the URL says ?window=main.
-import Pong from "../../components/Pong";
-import DbCheck from "./DbCheck"; // new in Phase 1
+// Tabs: Today (your notes), Cutoff (the DAR grid and Export), Tasks (duties and MFOs),
+// Settings. Everything is read and written through window.pong.
+import { useEffect, useState } from 'react'
+import Pong from '../../components/Pong'
+import '../../styles/card.css'
+import CutoffView from './CutoffView'
+import './main.css'
+import SettingsView from './SettingsView'
+import TasksView from './TasksView'
+import TodayView from './TodayView'
 
-// Phase 0 placeholder with dev buttons. Phase 5 builds Today and Cutoff from docs/design/boards/App.dc.html.
+type Tab = 'today' | 'cutoff' | 'tasks' | 'settings'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'cutoff', label: 'Cutoff (DAR)' },
+  { id: 'tasks', label: 'Tasks' },
+  { id: 'settings', label: 'Settings' }
+]
+
+const clock = (ms: number) => new Date(ms).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+
 export default function MainWindow() {
+  const [tab, setTab] = useState<Tab>('today')
+  // Bumped whenever main says data changed: views reload when `version` changes.
+  const [version, setVersion] = useState(0)
+  const [next, setNext] = useState<number | null>(null)
+
+  useEffect(() => window.pong.onDataChanged(() => setVersion((v) => v + 1)), [])
+
+  // "Next check-in around 3:45 PM", refreshed every half minute like the scheduler.
+  useEffect(() => {
+    const load = () => window.pong.nextCheckin().then(setNext)
+    load()
+    const timer = setInterval(load, 30_000)
+    return () => clearInterval(timer)
+  }, [version])
+
+  const bump = () => setVersion((v) => v + 1)
+
   return (
-    <main
-      style={{
-        padding: 32,
-        display: "flex",
-        flexDirection: "column",
-        gap: 24,
-        maxWidth: 720,
-      }}
-    >
-      <header style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <Pong mood="peek" size={64} />
-        <div>
-          <h1 style={{ fontSize: 30 }}>Pong DAR Buddy</h1>
-          <span style={{ color: "var(--muted)" }}>
-            Phase 0 scaffold. Today, Cutoff and Settings arrive in Phases 5 and
-            7.
-          </span>
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <Pong mood="happy" size={38} />
+          <span className="brand-name">Pong</span>
+          <nav className="tabs">
+            {TABS.map((t) => (
+              <button key={t.id} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </nav>
         </div>
+        <span className="muted" style={{ fontSize: 13 }}>
+          {next === null ? 'Pong is off duty' : `Next check-in around ${clock(next)}`}
+        </span>
       </header>
-
-      <section
-        style={{
-          background: "#ffffff",
-          border: "1px solid var(--line)",
-          borderRadius: 16,
-          padding: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: 12,
-        }}
-      >
-        <h2 style={{ fontSize: 20 }}>Dev buttons</h2>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5 }}>
-          Each button calls window.pong (preload), which asks the main process
-          to show or hide a window.
-        </p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button
-            className="primary"
-            onClick={() => window.pong.showWindow("pong")}
-          >
-            Show pong
-          </button>
-          <button onClick={() => window.pong.hideWindow("pong")}>
-            Hide pong
-          </button>
-          <button
-            className="primary"
-            onClick={() => window.pong.showWindow("checkin")}
-          >
-            Show check-in
-          </button>
-        </div>
-      </section>
-
-      {/* New in Phase 1: the panel from DbCheck.tsx, under the dev buttons. */}
-      <DbCheck />
-    </main>
-  );
+      <main className="view">
+        {tab === 'today' && <TodayView version={version} onChange={bump} onCutoff={() => setTab('cutoff')} />}
+        {tab === 'cutoff' && <CutoffView version={version} onChange={bump} />}
+        {tab === 'tasks' && <TasksView onChange={bump} />}
+        {tab === 'settings' && <SettingsView />}
+      </main>
+    </div>
+  )
 }

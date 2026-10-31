@@ -49,6 +49,44 @@ describe('entries', () => {
   })
 })
 
+describe('editing notes', () => {
+  it('adds a note for an earlier time', () => {
+    const entry = q.addEntry(db, { text: 'Standup', workDate: '2026-10-26', time: '08:15' })
+    expect(entry.createdAt).toBe('2026-10-26T08:15:00')
+  })
+
+  it('edits text, task, % and time, and deletes', () => {
+    const duty = q.addDuty(db, 'core', 'Frontend')
+    const mfo = q.addOutput(db, duty.id, 'GIS map')
+    const entry = q.addEntry(db, { text: 'typo', workDate: '2026-10-26', time: '09:00' })
+    expect(q.updateEntry(db, entry.id, { text: 'Fixed', outputId: mfo.id, progress: 0.75, time: '09:30' })).toMatchObject({
+      text: 'Fixed',
+      outputId: mfo.id,
+      progress: 0.75,
+      createdAt: '2026-10-26T09:30:00',
+      workDate: '2026-10-26'
+    })
+    // Untagging drops the % too: a plain note has no cell in the DAR.
+    expect(q.updateEntry(db, entry.id, { outputId: null })).toMatchObject({ outputId: null, progress: null })
+    q.deleteEntry(db, entry.id)
+    expect(q.entriesByDate(db, '2026-10-26')).toEqual([])
+    expect(q.updateEntry(db, 999, { text: 'x' })).toBeNull()
+  })
+})
+
+describe('exports', () => {
+  it('remembers the newest export of a cutoff', () => {
+    const period = { start: '2026-10-18', end: '2026-11-02' }
+    expect(q.lastExport(db, period)).toBeNull()
+    q.recordExport(db, period, 'October 18 - November 2', new Date(2026, 10, 3, 9))
+    q.recordExport(db, period, 'October 18 - November 2', new Date(2026, 10, 3, 10))
+    expect(q.lastExport(db, period)).toEqual({ periodStart: '2026-10-18', periodEnd: '2026-11-02',
+      sheetName: 'October 18 - November 2', exportedAt: '2026-11-03T10:00:00' })
+    q.forgetLastExport(db, period) // Undo
+    expect(q.lastExport(db, period)?.exportedAt).toBe('2026-11-03T09:00:00')
+  })
+})
+
 describe('duties and MFOs', () => {
   it('adds, renames and archives', () => {
     const duty = q.addDuty(db, 'core', 'Frontend System Development')

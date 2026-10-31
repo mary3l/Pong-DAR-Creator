@@ -11,22 +11,24 @@
 // Arguments come from a web page, so check each one before it reaches the database.
 // Treat them like input from the internet: TypeScript types vanish at runtime, so
 // nothing stops a buggy renderer from sending { text: 42 }.
-import { app, ipcMain } from 'electron'
+import { app, ipcMain, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { copyFile, mkdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
 import { events } from './events'
-import { exportDar } from './export'
+import { exportDar, undoExport } from './export'
 import { act, missedDone, pongState } from './pong'
 import * as q from './queries'
-import { askNow } from './scheduler'
+import { askNow, nextCheckin } from './scheduler'
+import { getSettings, saveSettings } from './settings'
 import { readDarSheet, seedDatabase } from './seed'
-import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, showWindow } from './windows'
+import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, send, showWindow } from './windows'
 import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
 import { isIsoDate, localDate } from '../shared/dates'
 import { isWindowLabel } from '../shared/windowLabel'
-import type { Category, DayType, NewEntry, PongAction, Period, Profile } from '../shared/types'
+import { isTime, type Settings } from '../shared/settings'
+import type { Category, DayType, EntryChanges, ExportResult, NewEntry, PongAction, Period, Profile } from '../shared/types'
 
 // The allowed values, as lists we can check against at runtime.
 const PROGRESS = [0.25, 0.5, 0.75, 1]
@@ -62,9 +64,20 @@ function checkNewEntry(v: unknown): asserts v is NewEntry {
   check(isObject(v), 'entry')
   check(isText(v.text), 'entry.text')
   check(v.workDate === undefined || isIsoDate(v.workDate), 'entry.workDate')
+  check(v.time === undefined || isTime(v.time), 'entry.time')
   check(v.outputId === undefined || v.outputId === null || isId(v.outputId), 'entry.outputId')
   check(v.progress === undefined || v.progress === null || PROGRESS.includes(v.progress as number), 'entry.progress')
   check(v.source === undefined || SOURCES.includes(v.source as string), 'entry.source')
+}
+
+// An edit may change only these fields, each checked like a new note's.
+function checkEntryChanges(v: unknown): asserts v is EntryChanges {
+  check(isObject(v), 'changes')
+  for (const key of Object.keys(v)) check(['text', 'outputId', 'progress', 'time'].includes(key), `changes.${key}`)
+  check(v.text === undefined || isText(v.text), 'changes.text')
+  check(v.outputId === undefined || v.outputId === null || isId(v.outputId), 'changes.outputId')
+  check(v.progress === undefined || v.progress === null || PROGRESS.includes(v.progress as number), 'changes.progress')
+  check(v.time === undefined || isTime(v.time), 'changes.time')
 }
 
 // A profile update may only contain known fields, each a short string or null.
@@ -91,10 +104,14 @@ function gridFor(db: DatabaseSync, period: Period): DarGrid {
 // Phase 2: exports go ONLY into a copy of the sample, %TEMP%\Pong\MABANO_DAR_copy.xlsx.
 // The first export makes the copy; later ones add to it. Delete it to start fresh.
 // Phase 8 switches this to your real workbook (profile.workbookPath).
+function exportTargetPath(): string {
+  return join(app.getPath('temp'), 'Pong', 'MABANO_DAR_copy.xlsx')
+}
+
 async function exportTarget(): Promise<string> {
   const sample = join(app.getAppPath(), 'docs/reference/MABANO_DAR_sample.xlsx')
-  const dir = join(app.getPath('temp'), 'Pong')
-  const path = join(dir, 'MABANO_DAR_copy.xlsx')
+  const path = exportTargetPath()
+  const dir = join(path, '..')
   if (!existsSync(path)) {
     await mkdir(dir, { recursive: true }) // recursive: no error if it already exists
     await copyFile(sample, path)
@@ -102,10 +119,19 @@ async function exportTarget(): Promise<string> {
   return path
 }
 
+// The last export this session, so "Open in Excel" and "Undo" know which file.
+let lastResult: (ExportResult & { period: Period }) | null = null
+
 // Called once from index.ts, after the database is open.
 // Each handler: (event, ...arguments). `_e` = the event; the _ says "not used here".
 // Channel names follow '<area>:<verb>', and must match preload/index.ts exactly.
 export function registerIpc(db: DatabaseSync): void {
+  // Main -> main window: "notes or days off changed, reload". The check-in card saves
+  // in another window, and Today and Cutoff should show it right away.
+  const changed = (): void => send('main', 'data:changed')
+  events.on('entry-saved', changed)
+  events.on('day-status-saved', changed)
+
   // windows
   ipcMain.handle('window:show', (_e, label: unknown) => {
     check(isWindowLabel(label), 'window label')
@@ -146,6 +172,16 @@ export function registerIpc(db: DatabaseSync): void {
     return saved
   })
   ipcMain.handle('entries:lastTagged', () => q.lastTagged(db))
+  ipcMain.handle('entries:update', (_e, id: unknown, changes: unknown) => {
+    check(isId(id), 'id')
+    checkEntryChanges(changes)
+    return q.updateEntry(db, id, changes)
+  })
+  ipcMain.handle('entries:delete', (_e, id: unknown) => {
+    check(isId(id), 'id')
+    q.deleteEntry(db, id)
+    changed()
+  })
   ipcMain.handle('entries:byDate', (_e, date: unknown) => {
     check(isIsoDate(date), 'date')
     return q.entriesByDate(db, date)
@@ -213,11 +249,51 @@ export function registerIpc(db: DatabaseSync): void {
     check(isCutoff(period), 'period')
     check(typeof replace === 'boolean', 'replace')
     if (app.isPackaged) throw new Error('Export is only available in development until Phase 8')
-    return exportDar(await exportTarget(), gridFor(db, period), q.getProfile(db), {
+    const grid = gridFor(db, period)
+    const result = await exportDar(await exportTarget(), grid, q.getProfile(db), {
       submitted: localDate(),
       replace
     })
+    q.recordExport(db, period, grid.sheetName)
+    lastResult = { ...result, period }
+    return result
   })
+  // Where exports go, for the button's label: "Add sheet to MABANO_DAR.xlsx".
+  ipcMain.handle('dar:target', () => {
+    const path = exportTargetPath()
+    return { name: basename(path), exists: existsSync(path) }
+  })
+  ipcMain.handle('dar:lastExport', (_e, period: unknown) => {
+    check(isCutoff(period), 'period')
+    return q.lastExport(db, period)
+  })
+  // shell = Electron's way to open files with their usual app (Excel for .xlsx).
+  // Main picks the file; the renderer can't name one.
+  ipcMain.handle('dar:open', async () => {
+    const error = await shell.openPath(lastResult?.path ?? exportTargetPath())
+    if (error) throw new Error(error)
+  })
+  // Undo the last export: put the .bak back. Only right after an export, this session.
+  ipcMain.handle('dar:undo', async () => {
+    if (!lastResult) throw new Error('Nothing to undo')
+    await undoExport(lastResult)
+    q.forgetLastExport(db, lastResult.period)
+    lastResult = null
+  })
+
+  ipcMain.handle('schedule:next', () => nextCheckin())
+
+  // settings (Phase 7 screen). saveSettings() checks every field (shared/settings.ts).
+  ipcMain.handle('settings:get', () => getSettings())
+  ipcMain.handle('settings:set', (_e, changes: unknown) => {
+    check(isObject(changes), 'settings')
+    return saveSettings(changes as Partial<Settings>)
+  })
+  ipcMain.handle('app:info', () => ({
+    version: app.getVersion(),
+    packaged: app.isPackaged,
+    dataFolder: app.getPath('userData')
+  }))
 
   // dev only: replace everything with the sample DAR's data
   // `async` handler: main awaits the file read, then the renderer gets the counts.

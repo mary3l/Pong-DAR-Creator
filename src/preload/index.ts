@@ -44,6 +44,8 @@ const api: PongApi = {
   entriesByDate: (date) => ipcRenderer.invoke('entries:byDate', date),
   entriesInPeriod: (period) => ipcRenderer.invoke('entries:inPeriod', period),
   lastTagged: () => ipcRenderer.invoke('entries:lastTagged'),
+  updateEntry: (id, changes) => ipcRenderer.invoke('entries:update', id, changes),
+  deleteEntry: (id) => ipcRenderer.invoke('entries:delete', id),
 
   listDuties: () => ipcRenderer.invoke('duties:list'),
   addDuty: (category, title) => ipcRenderer.invoke('duties:add', category, title),
@@ -60,6 +62,19 @@ const api: PongApi = {
 
   buildGrid: (period) => ipcRenderer.invoke('grid:build', period),
   exportDar: (period, replace) => ipcRenderer.invoke('dar:export', period, replace),
+  exportTarget: () => ipcRenderer.invoke('dar:target'),
+  lastExport: (period) => ipcRenderer.invoke('dar:lastExport', period),
+  openWorkbook: () => ipcRenderer.invoke('dar:open'),
+  undoExport: () => ipcRenderer.invoke('dar:undo'),
+  nextCheckin: () => ipcRenderer.invoke('schedule:next'),
+  appInfo: () => ipcRenderer.invoke('app:info'),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (changes) => ipcRenderer.invoke('settings:set', changes),
+  onDataChanged: (callback) => {
+    const listener = (): void => callback()
+    ipcRenderer.on('data:changed', listener)
+    return () => ipcRenderer.removeListener('data:changed', listener)
+  },
   seedFromSample: () => ipcRenderer.invoke('dev:seed')
 }
 
