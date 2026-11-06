@@ -133,9 +133,13 @@ let lastResult: (ExportResult & { period: Period }) | null = null
 // Each handler: (event, ...arguments). `_e` = the event; the _ says "not used here".
 // Channel names follow '<area>:<verb>', and must match preload/index.ts exactly.
 export function registerIpc(db: DatabaseSync): void {
-  // Main -> main window: "notes or days off changed, reload". The check-in card saves
-  // in another window, and Today and Cutoff should show it right away.
-  const changed = (): void => send('main', 'data:changed')
+  // Main -> main window: "something changed, reload". The check-in card saves in another
+  // window, and Today, Cutoff and Tasks should show it right away. Every write below calls it.
+  // The check-in window hears it too, so its task chips stay current.
+  const changed = (): void => {
+    send('main', 'data:changed')
+    send('checkin', 'data:changed')
+  }
   events.on('entry-saved', changed)
   events.on('day-status-saved', changed)
 
@@ -186,7 +190,9 @@ export function registerIpc(db: DatabaseSync): void {
   ipcMain.handle('entries:update', (_e, id: unknown, changes: unknown) => {
     check(isId(id), 'id')
     checkEntryChanges(changes)
-    return q.updateEntry(db, id, changes)
+    const saved = q.updateEntry(db, id, changes)
+    changed()
+    return saved
   })
   ipcMain.handle('entries:delete', (_e, id: unknown) => {
     check(isId(id), 'id')
@@ -207,7 +213,9 @@ export function registerIpc(db: DatabaseSync): void {
   ipcMain.handle('duties:add', (_e, category: unknown, title: unknown) => {
     check(CATEGORIES.includes(category as Category), 'category')
     check(isText(title, 300), 'title')
-    return q.addDuty(db, category as Category, title)
+    const duty = q.addDuty(db, category as Category, title)
+    changed()
+    return duty
   })
   ipcMain.handle('duties:update', (_e, id: unknown, changes: unknown) => {
     check(isId(id), 'id')
@@ -215,13 +223,16 @@ export function registerIpc(db: DatabaseSync): void {
     check(changes.title === undefined || isText(changes.title, 300), 'changes.title')
     check(changes.archived === undefined || typeof changes.archived === 'boolean', 'changes.archived')
     q.updateDuty(db, id, changes as { title?: string; archived?: boolean })
+    changed()
   })
   ipcMain.handle('outputs:list', () => q.listOutputs(db))
   ipcMain.handle('outputs:recent', () => q.recentOutputs(db))
   ipcMain.handle('outputs:add', (_e, dutyId: unknown, title: unknown) => {
     check(isId(dutyId), 'dutyId')
     check(isText(title, 300), 'title')
-    return q.addOutput(db, dutyId, title)
+    const output = q.addOutput(db, dutyId, title)
+    changed()
+    return output
   })
   ipcMain.handle('outputs:update', (_e, id: unknown, changes: unknown) => {
     check(isId(id), 'id')
@@ -229,13 +240,16 @@ export function registerIpc(db: DatabaseSync): void {
     check(changes.title === undefined || isText(changes.title, 300), 'changes.title')
     check(changes.status === undefined || changes.status === 'active' || changes.status === 'done', 'changes.status')
     q.updateOutput(db, id, changes as { title?: string; status?: 'active' | 'done' })
+    changed()
   })
 
   // profile and day status
   ipcMain.handle('profile:get', () => q.getProfile(db))
   ipcMain.handle('profile:set', (_e, changes: unknown) => {
     checkProfile(changes)
-    return q.setProfile(db, changes)
+    const profile = q.setProfile(db, changes)
+    changed()
+    return profile
   })
   ipcMain.handle('dayStatus:inPeriod', (_e, period: unknown) => {
     check(isPeriod(period), 'period')
@@ -262,10 +276,12 @@ export function registerIpc(db: DatabaseSync): void {
     const grid = gridFor(db, period)
     const result = await exportDar(await exportTarget(db), grid, q.getProfile(db), {
       submitted: localDate(),
-      replace
+      replace,
+      codesRow: getSettings().codesRow
     })
     q.recordExport(db, period, grid.sheetName)
     lastResult = { ...result, period }
+    changed()
     return result
   })
   // Where exports go, for the button's label: "Add sheet to MABANO_DAR.xlsx".
@@ -291,6 +307,7 @@ export function registerIpc(db: DatabaseSync): void {
     await undoExport(lastResult)
     q.forgetLastExport(db, lastResult.period)
     lastResult = null
+    changed()
   })
 
   ipcMain.handle('schedule:next', () => nextCheckin())

@@ -2,7 +2,7 @@
 // Runs in the RENDERER; every change goes through window.pong (main writes SQLite).
 // Archived duties and done MFOs drop off future DAR sheets, but stay on sheets where
 // they already have a %.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTasks } from '../../components/useTasks'
 import type { Category, Duty, Output } from '../../../../shared/types'
 
@@ -11,8 +11,13 @@ const SECTIONS: { category: Category; title: string }[] = [
   { category: 'support', title: 'B.) Support functions' }
 ]
 
-export default function TasksView(props: { onChange: () => void }) {
+export default function TasksView(props: { version: number; onChange: () => void }) {
   const tasks = useTasks()
+  // A task added from the check-in card shows up here too.
+  useEffect(() => {
+    tasks.reload()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.version])
   const [showArchived, setShowArchived] = useState(false)
   const [newDuty, setNewDuty] = useState<Record<Category, string>>({ core: '', support: '' })
 

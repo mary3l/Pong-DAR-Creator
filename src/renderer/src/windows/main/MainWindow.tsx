@@ -70,7 +70,7 @@ export default function MainWindow() {
         {setupDone === false && <FirstRunView onDone={() => setSetupDone(true)} />}
         {setupDone && tab === 'today' && <TodayView version={version} onChange={bump} onCutoff={() => setTab('cutoff')} />}
         {setupDone && tab === 'cutoff' && <CutoffView version={version} onChange={bump} />}
-        {setupDone && tab === 'tasks' && <TasksView onChange={bump} />}
+        {setupDone && tab === 'tasks' && <TasksView version={version} onChange={bump} />}
         {setupDone && tab === 'settings' && <SettingsView />}
         {setupDone && tab === 'help' && <HelpView />}
       </main>

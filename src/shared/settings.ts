@@ -27,6 +27,8 @@ export interface Settings {
   spot: 'taskbar' | 'tray' // Pong on the taskbar, or only the tray icon
   setupDone: boolean // false until the first-run form is saved
   startedOn: string // 'YYYY-MM-DD' of the first run; days before it are never "missed"
+  // DAR sheet
+  codesRow: boolean // a "Codes for the following:" row above each A.) duty's MFOs
   // Git
   repos: GitRepo[] // commits from these folders show as suggestions in the check-in card
 }
@@ -47,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   spot: 'taskbar',
   setupDone: false,
   startedOn: '',
+  codesRow: true,
   repos: []
 }
 
@@ -111,6 +114,7 @@ export function settingsError(changes: Record<string, unknown>): string | null {
       case 'autostart':
       case 'animations':
       case 'setupDone':
+      case 'codesRow':
         if (typeof value !== 'boolean') return key
         break
       default:

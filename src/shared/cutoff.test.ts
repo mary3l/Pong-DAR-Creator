@@ -154,7 +154,19 @@ describe('buildGrid', () => {
       []
     )
     expect(grid.core[0].rows.map((r) => r.output.id)).toEqual([2]) // done MFO 1 is gone; MFO 2 stays for its %
-    expect(grid.support[0].rows.map((r) => r.output.id)).toEqual([3]) // active MFO keeps its archived duty
+    expect(grid.support).toEqual([]) // archived duty 2 goes, even though its MFO 3 is still active
+  })
+
+  it('keeps an archived duty only for the MFOs with a % this period', () => {
+    const grid = buildGrid(
+      period,
+      [entry('2026-10-07', 3, 0.5)],
+      [duty(1, 'core'), duty(2, 'core', { archived: true })],
+      [output(1, 1), output(3, 2), output(4, 2)], // MFOs 3 and 4 are active, under archived duty 2
+      []
+    )
+    expect(grid.core.map((b) => b.duty.id)).toEqual([1, 2])
+    expect(grid.core[1].rows.map((r) => r.output.id)).toEqual([3]) // MFO 4 has no %, so it's gone
   })
 
   it('names the sheet', () => {

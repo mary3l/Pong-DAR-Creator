@@ -5,6 +5,7 @@ import Pong from '../../components/Pong'
 import { periodFor, type DarGrid, type GridDuty } from '../../../../shared/cutoff'
 import { addDays, isWeekend, localDate } from '../../../../shared/dates'
 import type { DayStatus, DayType, Entry, ExportRecord, ExportResult, Period, Profile } from '../../../../shared/types'
+import { PCT_STYLE, time12 } from './TodayView'
 
 // Clicking a weekday's date: work day -> sick -> personal -> holiday -> work day.
 const NEXT: Record<DayType | 'work', DayType | null> = {
@@ -43,8 +44,14 @@ export default function CutoffView(props: { version: number; onChange: () => voi
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<ExportResult | null>(null)
   const [error, setError] = useState('')
+  const [codesRow, setCodesRow] = useState(true)
+  // The % cell you clicked: its notes show under the grid.
+  const [picked, setPicked] = useState<{ outputId: number; date: string; title: string } | null>(null)
+
+  useEffect(() => setPicked(null), [period])
 
   useEffect(() => {
+    window.pong.getSettings().then((s) => setCodesRow(s.codesRow))
     window.pong.buildGrid(period).then(setGrid)
     window.pong.dayStatusInPeriod(period).then(setStatuses)
     window.pong.entriesInPeriod(period).then(setEntries)
@@ -100,9 +107,18 @@ export default function CutoffView(props: { version: number; onChange: () => voi
   if (!grid) return null
 
   const logged = new Set(entries.map((e) => e.workDate))
+  // The notes behind each % cell: "<outputId>|<date>" -> notes, oldest first.
+  const notes = new Map<string, Entry[]>()
+  for (const e of entries) {
+    if (e.outputId === null || e.progress === null) continue
+    const key = `${e.outputId}|${e.workDate}`
+    notes.set(key, [...(notes.get(key) ?? []), e])
+  }
+  const pickedNotes = picked ? (notes.get(`${picked.outputId}|${picked.date}`) ?? []) : []
   const missing = grid.days.filter((d) => d.date < today && !d.off && !logged.has(d.date)).length
   const mfoCount = [...grid.core, ...grid.support].reduce((n, b) => n + b.rows.length, 0)
   const cols = `28px 160px minmax(180px, 1fr) repeat(${grid.days.length}, 31px)`
+  const blockProps = { grid, cols, today, statuses, notes, picked, onPick: setPicked }
 
   return (
     <div className="cutoff">
@@ -121,6 +137,10 @@ export default function CutoffView(props: { version: number; onChange: () => voi
             This cutoff
           </button>
         )}
+        {/* Cutoff reloads by itself after every save; this is for peace of mind. */}
+        <button style={{ width: 'auto', padding: '0 12px' }} title="Read the notes and tasks again" onClick={props.onChange}>
+          ↻ Reload
+        </button>
         <span className="muted" style={{ fontSize: 13, marginLeft: 'auto' }}>
           {last ? `Last added to ${target} ${stamp(last.exportedAt)}` : 'Not exported yet'}
         </span>
@@ -174,13 +194,42 @@ export default function CutoffView(props: { version: number; onChange: () => voi
 
         <div className="dar-section">A.) SPECIFIC DUTIES AND RESPONSIBILITIES</div>
         {grid.core.map((block, i) => (
-          <DutyBlock key={block.duty.id} block={block} number={i + 1} codes grid={grid} cols={cols} today={today} statuses={statuses} />
+          <DutyBlock key={block.duty.id} block={block} number={i + 1} codes={codesRow} {...blockProps} />
         ))}
         <div className="dar-section">B.) SUPPORT FUNCTIONS</div>
         {grid.support.map((block, i) => (
-          <DutyBlock key={block.duty.id} block={block} number={i + 1} codes={false} grid={grid} cols={cols} today={today} statuses={statuses} />
+          <DutyBlock key={block.duty.id} block={block} number={i + 1} codes={false} {...blockProps} />
         ))}
       </div>
+
+      {picked && pickedNotes.length > 0 && (
+        <div className="cell-notes">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+            <span className="cell-notes-title">
+              {new Date(`${picked.date}T00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+              {' · '}
+              {picked.title}
+            </span>
+            <button className="ghost" aria-label="Close the notes" onClick={() => setPicked(null)}>
+              ✕
+            </button>
+          </div>
+          {pickedNotes.map((e) => (
+            <div key={e.id} className="cell-note">
+              <span className="note-time">{time12(e.createdAt.slice(11, 16))}</span>
+              <span>{e.text}</span>
+              <span className="pill" style={{ background: PCT_STYLE[e.progress!].bg, color: PCT_STYLE[e.progress!].fg }}>
+                {e.progress! * 100}%
+              </span>
+            </div>
+          ))}
+          <span className="muted" style={{ fontSize: 12 }}>
+            {pickedNotes.length > 1
+              ? 'The DAR cell shows the highest % of these. The notes stay in Pong; only the % goes on the sheet.'
+              : 'The note stays in Pong; only the % goes on the sheet.'}
+          </span>
+        </div>
+      )}
 
       <div className="legend">
         <span>
@@ -195,6 +244,20 @@ export default function CutoffView(props: { version: number; onChange: () => voi
           <i style={{ background: '#C9C9C9' }} />
           Weekend ahead (fills in when it happens)
         </span>
+        <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            style={{ height: 14 }}
+            checked={codesRow}
+            onChange={async (e) => {
+              const on = e.target.checked
+              setCodesRow(on) // the preview changes now; the next export follows the setting
+              setResult(null)
+              await window.pong.setSettings({ codesRow: on })
+            }}
+          />
+          Show "Codes for the following:" in A.)
+        </label>
       </div>
 
       {error && <span className="error">{error}</span>}
@@ -221,7 +284,7 @@ export default function CutoffView(props: { version: number; onChange: () => voi
               {missing === 0 ? 'no missing days' : `${missing} ${missing === 1 ? 'weekday' : 'weekdays'} with no notes`}
             </span>
             <span className="muted" style={{ fontSize: 13 }}>
-              Click a weekday's date to mark sick leave, personal leave or a holiday.
+              Click a % to see the notes behind it. Click a weekday's date to mark sick leave, personal leave or a holiday.
             </span>
           </div>
           <button className="big-teal" disabled={busy} onClick={exportSheet}>
@@ -255,6 +318,9 @@ function DutyBlock(props: {
   cols: string
   today: string
   statuses: DayStatus[]
+  notes: Map<string, Entry[]>
+  picked: { outputId: number; date: string } | null
+  onPick: (cell: { outputId: number; date: string; title: string }) => void
 }) {
   const { block, codes, grid, today } = props
   const lines = [...(codes ? [null] : []), ...block.rows]
@@ -296,10 +362,18 @@ function DutyBlock(props: {
         return Array.from({ length: span }, (_, i) => {
           const row = lines[i]
           const value = row ? row.cells[di] : null
+          const pick = row && value ? { outputId: row.output.id, date: d.date, title: row.output.title } : null
+          const isPicked = pick !== null && props.picked?.outputId === pick.outputId && props.picked.date === pick.date
           return (
             <div
               key={`${d.date}-${i}`}
-              className="dar-cell"
+              className={`dar-cell${pick ? ' has-notes' : ''}${isPicked ? ' picked' : ''}`}
+              // A % cell works like a button: click or Enter shows its notes under the grid.
+              role={pick ? 'button' : undefined}
+              tabIndex={pick ? 0 : undefined}
+              aria-label={pick ? `${pick.title}, ${d.date}: ${value! * 100}%. Show the notes.` : undefined}
+              onClick={pick ? () => props.onPick(pick) : undefined}
+              onKeyDown={pick ? (e) => e.key === 'Enter' && props.onPick(pick) : undefined}
               style={{
                 gridColumn: col,
                 gridRow: i + 1,

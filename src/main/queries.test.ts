@@ -117,6 +117,14 @@ describe('check-in card', () => {
     expect(q.lastTagged(db)).toMatchObject({ outputId: b.id, progress: 0.5 })
   })
 
+  it('shows an MFO added after your last note as the first chip', () => {
+    const duty = q.addDuty(db, 'core', 'Frontend')
+    const a = q.addOutput(db, duty.id, 'A', new Date(2026, 9, 1))
+    q.addEntry(db, { text: 'x', outputId: a.id, progress: 0.25 }, new Date(2026, 9, 5, 9))
+    q.addOutput(db, duty.id, 'Just added', new Date(2026, 9, 5, 14))
+    expect(q.recentOutputs(db).map((o) => o.title)).toEqual(['Just added', 'A'])
+  })
+
   it('has no last tagged note on a fresh install', () => {
     q.addEntry(db, { text: 'a plain note' })
     expect(q.lastTagged(db)).toBeNull()

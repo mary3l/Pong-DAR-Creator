@@ -193,8 +193,9 @@ export function buildGrid(
         // Off days stay blank: the sheet shows one merged "Rest Day" cell there instead.
         cells: days.map((d) => (d.off ? null : (best.get(`${output.id}|${d.date}`) ?? null)))
       }))
-      // Finished MFOs drop off the sheet unless they have a % in this period.
-      .filter((row) => row.output.status === 'active' || row.cells.some((c) => c !== null))
+      // Finished MFOs, and every MFO of an archived duty, drop off the sheet unless they
+      // have a % in this period.
+      .filter((row) => (row.output.status === 'active' && !duty.archived) || row.cells.some((c) => c !== null))
 
   // 4. The duty blocks for one section, in their sort order.
   const blocks = (category: Duty['category']): GridDuty[] =>
@@ -202,7 +203,7 @@ export function buildGrid(
       .filter((d) => d.category === category)
       .sort((a, b) => a.sort - b.sort || a.id - b.id)
       .map((duty) => ({ duty, rows: rowsFor(duty) }))
-      // Archived duties only appear if something in them still has rows.
+      // Archived duties only appear if something in them has a % this period.
       .filter((block) => !block.duty.archived || block.rows.length > 0)
 
   return {

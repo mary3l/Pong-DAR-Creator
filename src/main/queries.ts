@@ -154,7 +154,9 @@ export function recentOutputs(db: DatabaseSync, limit = 5): Output[] {
        LEFT JOIN entries e ON e.output_id = o.id
        WHERE o.status = 'active' AND d.archived = 0
        GROUP BY o.id
-       ORDER BY MAX(e.created_at) IS NULL, MAX(e.created_at) DESC, o.created_at DESC, o.id DESC
+       -- Newest first by its last note, or by when it was added if that's later: an MFO
+       -- you just added shows as a chip before you've logged anything on it.
+       ORDER BY MAX(COALESCE(MAX(e.created_at), ''), COALESCE(o.created_at, '')) DESC, o.id DESC
        LIMIT ?`
     )
     .all(limit) as unknown as Output[]

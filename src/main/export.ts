@@ -86,11 +86,12 @@ interface FooterRow {
 // grid comes from buildGrid() and profile from getProfile(): ipc.ts reads the database,
 // this file only writes Excel. `submitted` is the 'YYYY-MM-DD' for "Date Submitted".
 // `replace: true` swaps out a sheet with the same name (export again after fixing notes).
+// `codesRow: false` leaves out the "Codes for the following:" rows (Settings, default on).
 export async function exportDar(
   path: string,
   grid: DarGrid,
   profile: Profile,
-  options: { submitted: string; replace?: boolean }
+  options: { submitted: string; replace?: boolean; codesRow?: boolean }
 ): Promise<ExportResult> {
   await checkNotLocked(path)
 
@@ -118,7 +119,7 @@ export async function exportDar(
   const footer = takeFooter(ws, templateLastCol)
   clearGrid(ws)
   writeHeader(ws, grid, profile, options.submitted, templateLastCol, lastCol)
-  const footerTop = writeGrid(ws, grid, lastCol)
+  const footerTop = writeGrid(ws, grid, lastCol, options.codesRow ?? true)
   const lastRow = writeFooter(ws, footer, footerTop, profile)
 
   // Print area: A1 to the last day column and the last footer row, e.g. "A1:W38".
@@ -315,10 +316,10 @@ function writeHeader(
 // ---------------------------------------------------------------------------
 
 // Writes both sections and returns the first row after the grid (where the footer goes).
-function writeGrid(ws: ExcelJS.Worksheet, grid: DarGrid, lastCol: number): number {
+function writeGrid(ws: ExcelJS.Worksheet, grid: DarGrid, lastCol: number, codesRow: boolean): number {
   // A.) Core duties. Their section title is part of the template (rows 18-19).
   let row = FIRST_GRID_ROW
-  for (const [i, block] of grid.core.entries()) row = writeDuty(ws, grid, block, i + 1, row, true)
+  for (const [i, block] of grid.core.entries()) row = writeDuty(ws, grid, block, i + 1, row, codesRow)
   writeDaysOff(ws, grid, FIRST_GRID_ROW, row - 1)
 
   // B.) Support functions: a title row styled like section A's, then the duties.
@@ -336,8 +337,8 @@ function writeGrid(ws: ExcelJS.Worksheet, grid: DarGrid, lastCol: number): numbe
   return row
 }
 
-// One duty block. Core duties (withCodes) start with a "Codes for the following:" row;
-// support duties don't. Returns the first row after the block.
+// One duty block. Core duties (withCodes) start with a "Codes for the following:" row,
+// unless it's turned off in Settings; support duties never do. Returns the first row after the block.
 //
 //   A    B:D          E:G                        H  I  J ...
 //   1.   Frontend...  Codes for the following:   (the first MFO's % box spans

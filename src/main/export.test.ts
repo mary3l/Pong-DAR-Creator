@@ -119,6 +119,19 @@ describe.skipIf(!existsSync(SAMPLE))('exportDar', () => {
     expect(ws.getCell('L9').value).toBe('Date Submitted: November 3, 2026')
   }, 60_000)
 
+  it('can leave out the "Codes for the following:" rows', async () => {
+    const { db, gridFor } = await seeded()
+    await exportDar(copy, gridFor(OCT_3), q.getProfile(db), { submitted: '2026-10-22', replace: true, codesRow: false })
+
+    const ws = await openSheet(copy, 'October 3 - 17')
+    const texts: string[] = []
+    ws.eachRow((row) => row.eachCell((cell) => texts.push(String(cell.value))))
+    expect(texts.filter((t) => /codes for the following/i.test(t))).toEqual([])
+    // The first core MFO moves up into row 20, and the duties and % read back the same.
+    expect(ws.getCell('E20').value).toBe(gridFor(OCT_3).core[0].rows[0].output.title)
+    expect(await readDarSheet(copy, 'October 3 - 17')).toEqual(await readDarSheet(SAMPLE, 'October 3 - 17'))
+  }, 60_000)
+
   it('refuses to overwrite a sheet unless asked', async () => {
     const { db, gridFor } = await seeded()
     // rejects.toThrow: the Promise must fail, with a message matching the pattern.

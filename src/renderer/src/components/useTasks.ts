@@ -28,16 +28,21 @@ export function useTasks(): Tasks {
     return { ...next, reload }
   }, [])
 
+  // Again whenever main says something changed, e.g. an MFO added in the Tasks tab
+  // while the check-in card is open.
   useEffect(() => {
     reload()
+    return window.pong.onDataChanged(() => reload())
   }, [reload])
 
   return { ...data, reload }
 }
 
-// "Core function · Frontend System Development and Enhancement"
+// Under the task chips: where the note's % lands on the DAR sheet. The note's own
+// words never go to the DAR; only the task's row and the day's highest %.
 export function dutyLine(output: Output | undefined, duties: Duty[]): string {
   const duty = output && duties.find((d) => d.id === output.dutyId)
-  if (!duty) return 'A plain note, not tagged to a DAR task'
-  return `${duty.category === 'core' ? 'Core' : 'Support'} function · ${duty.title}`
+  if (!duty) return 'Not tagged: the note stays in Pong and adds nothing to the DAR.'
+  const section = duty.category === 'core' ? 'A.) Specific duties' : 'B.) Support functions'
+  return `On the DAR: the % goes in the row "${output.title}", under ${duty.title} (${section}). Your note's words stay in Pong.`
 }

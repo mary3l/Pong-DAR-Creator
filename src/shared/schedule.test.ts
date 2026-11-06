@@ -97,6 +97,7 @@ describe('settingsError', () => {
     expect(settingsError({ workEnd: '25:00' })).toBe('workEnd')
     expect(settingsError({ workDays: [7] })).toBe('workDays')
     expect(settingsError({ animations: 'yes' })).toBe('animations')
+    expect(settingsError({ codesRow: 1 })).toBe('codesRow')
     expect(settingsError({ hacker: true })).toBe('hacker')
     expect(settingsError({ repos: [{ path: 'C:/code/pong-dar', outputId: null, extra: 1 }] })).toBe('repos')
     expect(settingsError({ repos: [{ path: '', outputId: null }] })).toBe('repos')
