@@ -6,7 +6,7 @@
 // Adding a feature = one line here, one in the preload, one handler in ipc.ts.
 import type { DarGrid } from './cutoff'
 import type {
-  Category, CheckinRequest, DayStatus, DayType, Duty, Entry, EntryChanges, ExportRecord, ExportResult, NewEntry,
+  Attendance, AttendanceChanges, Category, CheckinRequest, DayStatus, DayType, Duty, Entry, EntryChanges, ExportRecord, ExportResult, NewEntry,
   Output, Period, PongAction, PongState, Profile
 } from './types'
 import type { CommitSuggestion } from './gitlog'
@@ -50,11 +50,18 @@ export interface PongApi {
   recentOutputs(): Promise<Output[]> // the 5 chips on the check-in card
   addOutput(dutyId: number, title: string): Promise<Output>
   updateOutput(id: number, changes: { title?: string; status?: Output['status'] }): Promise<void>
+  moveOutput(id: number, dutyId: number): Promise<void> // under another duty, notes and all
+  mergeOutput(fromId: number, intoId: number): Promise<void> // fromId's notes go to intoId; fromId is deleted
 
   getProfile(): Promise<Profile>
   setProfile(changes: Partial<Profile>): Promise<Profile> // Partial = any subset of the fields
   dayStatusInPeriod(period: Period): Promise<DayStatus[]>
   setDayStatus(date: string, type: DayType | null): Promise<void> // null clears the day
+
+  // Attendance (Phase 9): time-in, lunch, time-out, OT / ATWEH approval
+  getAttendance(date: string): Promise<Attendance | null>
+  attendanceInPeriod(period: Period): Promise<Attendance[]>
+  setAttendance(date: string, changes: AttendanceChanges): Promise<Attendance> // fixes from Today and the card
 
   buildGrid(period: Period): Promise<DarGrid>
   exportDar(period: Period, replace: boolean): Promise<ExportResult> // adds the cutoff's sheet (Phase 2)

@@ -88,6 +88,17 @@ describe('tick', () => {
   })
 })
 
+describe('tick in an extended session (OT or a weekend)', () => {
+  it('keeps asking after 17:00 and on a Saturday', () => {
+    const due = at(26, 18, 0).getTime()
+    expect(tick(input(at(26, 18, 0), due, { extended: true }), S)).toMatchObject({ ask: true })
+    expect(tick(input(at(24, 10, 0), null, { extended: true }), S).dueAt).not.toBeNull()
+  })
+  it('stops when the session ends', () => {
+    expect(tick(input(at(26, 18, 0), at(26, 18, 0).getTime()), S)).toEqual({ dueAt: null, ask: false })
+  })
+})
+
 describe('settingsError', () => {
   it('accepts good changes', () => {
     expect(settingsError({ intervalMin: 45, workStart: '07:30', workDays: [1, 2, 3], spot: 'tray' })).toBeNull()

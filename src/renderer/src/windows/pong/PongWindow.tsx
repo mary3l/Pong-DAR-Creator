@@ -2,10 +2,12 @@
 // Main decides the mood and the bubble (pong.ts) and sends them here; this window only
 // draws them and reports clicks. It can't take keyboard focus (focusable: false), so
 // everything here is a click; typing happens in the check-in window.
+// Hovering over Pong shows small attendance buttons above him: Time in, Lunch, Time out.
 import { useEffect, useRef, useState } from 'react'
 import Pong from '../../components/Pong'
-import { dayLong } from '../../../../shared/cutoff'
+import { dayLong, weekdayName } from '../../../../shared/cutoff'
 import type { PongAction, PongState } from '../../../../shared/types'
+import { time12 } from '../main/TodayView'
 import './pong.css'
 
 const act = (action: PongAction) => () => window.pong.pongAction(action)
@@ -34,7 +36,17 @@ function dayList(days: string[]) {
 }
 
 export default function PongWindow() {
-  const [state, setState] = useState<PongState>({ mood: 'sleep', bubble: null, animations: true })
+  const [state, setState] = useState<PongState>({
+    mood: 'sleep',
+    bubble: null,
+    animations: true,
+    session: 'off',
+    trackLunch: false
+  })
+  // The hover buttons: shown while the cursor is over Pong, and a moment after it leaves,
+  // so it can travel from the turtle up to a button without them vanishing.
+  const [chips, setChips] = useState(false)
+  const chipTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     window.pong.pongState().then(setState)
@@ -50,9 +62,12 @@ export default function PongWindow() {
     if (over === hovering.current) return
     hovering.current = over
     window.pong.setPongHover(over)
+    clearTimeout(chipTimer.current)
+    if (over) setChips(true)
+    else chipTimer.current = setTimeout(() => setChips(false), 700)
   }
   const overPong = (x: number, y: number) =>
-    document.elementFromPoint(x, y)?.closest('.pong-turtle, .bubble, .toast') != null
+    document.elementFromPoint(x, y)?.closest('.pong-turtle, .pong-chips, .bubble, .toast') != null
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -82,8 +97,9 @@ export default function PongWindow() {
     requestAnimationFrame(() => report(c !== null && overPong(c.x, c.y)))
   }, [state])
 
-  const { mood, bubble } = state
+  const { mood, bubble, session } = state
   const awake = mood !== 'sleep'
+  const showChips = chips && !bubble && ['none', 'declined', 'in', 'lunch'].includes(session)
 
   return (
     <div className={`pong-stage${state.animations ? ' animated' : ''}`}>
@@ -113,6 +129,81 @@ export default function PongWindow() {
             </button>
             <button onClick={act('later')}>Later</button>
           </div>
+        </div>
+      )}
+
+      {bubble?.kind === 'time-in' && (
+        <div className="bubble" role="dialog" aria-label="Pong asks for your time-in">
+          <span className="bubble-title">
+            {bubble.nonWork ? 'Working today?' : new Date().getHours() < 12 ? 'Good morning!' : 'Hello!'}
+          </span>
+          <span className="bubble-sub">
+            {bubble.nonWork && (
+              <>
+                It's <b>{bubble.nonWork}</b>, so this counts as <b>extended hours</b> (ATWEH).{' '}
+              </>
+            )}
+            Time in at <b>{time12(bubble.at)}</b>? That's when I first saw you today.
+          </span>
+          <div className="bubble-buttons">
+            <button className="primary" onClick={act('time-in')}>
+              Time in
+            </button>
+            <button onClick={act('not-working')}>Not working today</button>
+          </div>
+        </div>
+      )}
+
+      {bubble?.kind === 'forgot-out' && (
+        <div className="bubble" role="dialog" aria-label="Pong asks about a missing time-out">
+          <span className="bubble-title">You forgot to time out</span>
+          <span className="bubble-sub">
+            No time-out on <b>{weekdayName(bubble.date)}</b>. I last saw you at <b>{time12(bubble.lastSeen)}</b>.
+          </span>
+          <div className="bubble-buttons">
+            <button className="primary" onClick={act('use-last-seen')}>
+              Use {time12(bubble.lastSeen)}
+            </button>
+            <button onClick={act('fix-today')}>Fix in Today</button>
+          </div>
+        </div>
+      )}
+
+      {bubble?.kind === 'ot-ask' && (
+        <div className="bubble" role="dialog" aria-label="Pong asks about overtime">
+          <span className="bubble-title">Still working? Overtime?</span>
+          <span className="bubble-sub">
+            Your day ended at <b>{time12(bubble.end)}</b>.
+          </span>
+          <div className="bubble-buttons">
+            <button className="primary" onClick={act('ot-yes')}>
+              Yes, OT
+            </button>
+            <button onClick={act('time-out')}>Time out now</button>
+            <button onClick={act('left-at')}>I left at {time12(bubble.end)}</button>
+          </div>
+        </div>
+      )}
+
+      {bubble?.kind === 'lunch-back' && (
+        <div className="bubble" role="dialog" aria-label="Pong asks if you are back from lunch">
+          <span className="bubble-title">Back from lunch?</span>
+          <span className="bubble-sub">Check-ins are paused while you're out.</span>
+          <div className="bubble-buttons">
+            <button className="primary" onClick={act('lunch-in')}>
+              I'm back
+            </button>
+            <button onClick={act('later')}>Not yet</button>
+          </div>
+        </div>
+      )}
+
+      {showChips && (
+        <div className="pong-chips">
+          {(session === 'none' || session === 'declined') && <button onClick={act('time-in')}>Time in</button>}
+          {session === 'in' && state.trackLunch && <button onClick={act('lunch-out')}>Lunch</button>}
+          {session === 'lunch' && <button onClick={act('lunch-in')}>Back</button>}
+          {(session === 'in' || session === 'lunch') && <button onClick={act('time-out')}>Time out</button>}
         </div>
       )}
 

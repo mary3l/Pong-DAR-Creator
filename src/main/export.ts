@@ -102,7 +102,6 @@ export async function exportDar(
   const sheets = workbook.worksheets.filter((s) => s.state === 'visible')
   const template = sheets[sheets.length - 1]
   if (!template) throw new Error(`${basename(path)} has no sheets to copy`)
-
   const existing = workbook.getWorksheet(grid.sheetName)
   if (existing && !options.replace) {
     throw new Error(`${basename(path)} already has a sheet named "${grid.sheetName}"`)

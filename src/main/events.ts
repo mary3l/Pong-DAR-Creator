@@ -10,6 +10,7 @@ import type { Entry } from '../shared/types'
 export const events = new EventEmitter<{
   'entry-saved': [entry: Entry]
   'day-status-saved': [date: string]
+  'attendance-saved': [date: string] // time-in, lunch, time-out or approval changed
   'pause-changed': []
   'settings-changed': []
   'checkin-shown': []

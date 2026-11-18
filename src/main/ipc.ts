@@ -16,6 +16,7 @@ import { existsSync } from 'node:fs'
 import { copyFile, mkdir } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
+import { saveAttendance } from './attendance'
 import { backupNow, lastBackup } from './backup'
 import { events } from './events'
 import { exportDar, undoExport } from './export'
@@ -32,14 +33,21 @@ import { isIsoDate, localDate, localTimestamp } from '../shared/dates'
 import { commitWindow, mergeSuggestions } from '../shared/gitlog'
 import { isWindowLabel } from '../shared/windowLabel'
 import { isTime, type Settings } from '../shared/settings'
-import type { Category, DayType, EntryChanges, ExportResult, NewEntry, PongAction, Period, Profile } from '../shared/types'
+import type {
+  Approval, AttendanceChanges, Category, DayType, EntryChanges, ExportResult, NewEntry, PongAction, Period, Profile
+} from '../shared/types'
 
 // The allowed values, as lists we can check against at runtime.
 const PROGRESS = [0.25, 0.5, 0.75, 1]
 const CATEGORIES: Category[] = ['core', 'support']
 const DAY_TYPES: DayType[] = ['rest', 'sick', 'personal', 'holiday']
 const SOURCES = ['checkin', 'hotkey', 'manual'] // not 'seed': only seed.ts may use that
-const PONG_ACTIONS: PongAction[] = ['click', 'tell', 'later', 'break', 'fill', 'dismiss']
+const PONG_ACTIONS: PongAction[] = [
+  'click', 'tell', 'later', 'break', 'fill', 'dismiss',
+  'time-in', 'not-working', 'time-out', 'lunch-out', 'lunch-in', 'ot-yes', 'left-at', 'use-last-seen', 'fix-today'
+]
+const APPROVALS: Approval[] = ['yes', 'no', 'pending']
+const TIME_KEYS = ['timeIn', 'lunchOut', 'lunchIn', 'timeOut'] as const
 const PROFILE_KEYS: (keyof Profile)[] = [
   'name', 'position', 'department', 'unit', 'teamLeader',
   'confirmedBy', 'confirmedTitle', 'notedBy', 'notedTitle', 'workbookPath'
@@ -82,6 +90,21 @@ function checkEntryChanges(v: unknown): asserts v is EntryChanges {
   check(v.outputId === undefined || v.outputId === null || isId(v.outputId), 'changes.outputId')
   check(v.progress === undefined || v.progress === null || PROGRESS.includes(v.progress as number), 'changes.progress')
   check(v.time === undefined || isTime(v.time), 'changes.time')
+}
+
+// A local timestamp like '2026-11-06T17:00:00' on a real date.
+const isStamp = (v: unknown): v is string =>
+  typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(v) && isIsoDate(v.slice(0, 10))
+
+// A fix from the Today view or the extra-time card: known fields only, each checked.
+function checkAttendanceChanges(v: unknown): asserts v is AttendanceChanges {
+  check(isObject(v), 'changes')
+  for (const [key, value] of Object.entries(v)) {
+    if ((TIME_KEYS as readonly string[]).includes(key)) check(value === null || isStamp(value), `changes.${key}`)
+    else if (key === 'nonWorkDay') check(typeof value === 'boolean', 'changes.nonWorkDay')
+    else if (key === 'approved') check(value === null || APPROVALS.includes(value as Approval), 'changes.approved')
+    else check(false, `changes.${key}`)
+  }
 }
 
 // A profile update may only contain known fields, each a short string or null.
@@ -142,6 +165,7 @@ export function registerIpc(db: DatabaseSync): void {
   }
   events.on('entry-saved', changed)
   events.on('day-status-saved', changed)
+  events.on('attendance-saved', changed)
 
   // windows
   ipcMain.handle('window:show', (_e, label: unknown) => {
@@ -177,6 +201,26 @@ export function registerIpc(db: DatabaseSync): void {
   ipcMain.handle('missed:done', (_e, summary: unknown) => {
     check(summary === null || isText(summary, 300), 'summary')
     missedDone(summary)
+  })
+
+  // attendance (Phase 9): the Today view's card and the extra-time card
+  ipcMain.handle('attendance:get', (_e, date: unknown) => {
+    check(isIsoDate(date), 'date')
+    return q.attendanceFor(db, date)
+  })
+  ipcMain.handle('attendance:inPeriod', (_e, period: unknown) => {
+    check(isPeriod(period), 'period')
+    return q.attendanceInPeriod(db, period)
+  })
+  ipcMain.handle('attendance:set', (_e, date: unknown, changes: unknown) => {
+    check(isIsoDate(date), 'date')
+    checkAttendanceChanges(changes)
+    // The times must still make sense together: in, then out, and lunch in between.
+    const next = { ...q.attendanceFor(db, date), ...changes }
+    check(!next.timeIn || next.timeIn.slice(0, 10) === date, 'time-in on another day')
+    check(!next.timeIn || !next.timeOut || next.timeOut >= next.timeIn, 'time-out before time-in')
+    check(!next.lunchOut || !next.lunchIn || next.lunchIn >= next.lunchOut, 'lunch back before lunch out')
+    return saveAttendance(date, changes)
   })
 
   // entries
@@ -240,6 +284,20 @@ export function registerIpc(db: DatabaseSync): void {
     check(changes.title === undefined || isText(changes.title, 300), 'changes.title')
     check(changes.status === undefined || changes.status === 'active' || changes.status === 'done', 'changes.status')
     q.updateOutput(db, id, changes as { title?: string; status?: 'active' | 'done' })
+    changed()
+  })
+
+  ipcMain.handle('outputs:move', (_e, id: unknown, dutyId: unknown) => {
+    check(isId(id), 'id')
+    check(isId(dutyId), 'dutyId')
+    q.moveOutput(db, id, dutyId)
+    changed()
+  })
+  ipcMain.handle('outputs:merge', (_e, fromId: unknown, intoId: unknown) => {
+    check(isId(fromId), 'fromId')
+    check(isId(intoId), 'intoId')
+    check(fromId !== intoId, 'intoId')
+    q.mergeOutput(db, fromId, intoId)
     changed()
   })
 

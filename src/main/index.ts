@@ -2,6 +2,7 @@
 // It runs once per launch, in Node, before any window exists.
 import { app } from 'electron'
 import { join } from 'node:path'
+import { initAttendance } from './attendance'
 import { openDb } from './db'
 import { startBackups } from './backup'
 import { events } from './events'
@@ -41,6 +42,7 @@ if (!app.requestSingleInstanceLock()) {
     const db = openDb(join(userData, 'pong.db'))
     // Close it cleanly when Pong quits, so WAL changes are merged into pong.db.
     app.on('will-quit', () => db.close())
+    initAttendance(db) // before any window can ask about time-in
 
     // Order matters: handlers must exist before any window can call window.pong.
     const settings = loadSettings(userData)

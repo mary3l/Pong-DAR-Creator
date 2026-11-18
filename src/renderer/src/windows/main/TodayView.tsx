@@ -2,6 +2,7 @@
 // Side panel: the highest % per MFO today, and how the cutoff is going. Runs in the RENDERER.
 import { useEffect, useState } from 'react'
 import PercentPicker from '../../components/PercentPicker'
+import AttendanceCard from './AttendanceCard'
 import Pong from '../../components/Pong'
 import TaskPicker from '../../components/TaskPicker'
 import { useTasks, type Tasks } from '../../components/useTasks'
@@ -181,6 +182,7 @@ export default function TodayView(props: { version: number; onChange: () => void
       </section>
 
       <aside className="today-side">
+        <AttendanceCard version={props.version} />
         <div className="box side-card">
           <span className="side-title">Today in your DAR</span>
           {touched.length === 0 && <span className="muted" style={{ fontSize: 13 }}>Tag a note to a task to see it here.</span>}
@@ -222,8 +224,9 @@ export default function TodayView(props: { version: number; onChange: () => void
   )
 }
 
-// Edit an existing note, or add one for an earlier time today.
-function NoteEditor(props: {
+// Edit an existing note, or add one for an earlier time today. Also used by the
+// Cutoff tab, to fix the notes behind a % cell.
+export function NoteEditor(props: {
   tasks: Tasks
   entry?: Entry
   onSave: (draft: { text: string; outputId: number | null; progress: Progress | null; time: string }) => void

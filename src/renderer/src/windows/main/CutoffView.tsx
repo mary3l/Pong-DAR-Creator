@@ -1,11 +1,13 @@
 // CutoffView.tsx: the DAR for one cutoff, laid out like the real sheet, and the Export
-// button. Click a weekday's date to cycle Sick Leave, Personal Leave, Holiday. Runs in the RENDERER.
+// button. Click a weekday's date to cycle Sick Leave, Personal Leave, Holiday. Click a %
+// to see, edit or delete the notes behind it. Runs in the RENDERER.
 import { useEffect, useState, type CSSProperties } from 'react'
 import Pong from '../../components/Pong'
 import { periodFor, type DarGrid, type GridDuty } from '../../../../shared/cutoff'
 import { addDays, isWeekend, localDate } from '../../../../shared/dates'
 import type { DayStatus, DayType, Entry, ExportRecord, ExportResult, Period, Profile } from '../../../../shared/types'
-import { PCT_STYLE, time12 } from './TodayView'
+import { NoteEditor, PCT_STYLE, time12 } from './TodayView'
+import { useTasks } from '../../components/useTasks'
 
 // Clicking a weekday's date: work day -> sick -> personal -> holiday -> work day.
 const NEXT: Record<DayType | 'work', DayType | null> = {
@@ -48,7 +50,19 @@ export default function CutoffView(props: { version: number; onChange: () => voi
   // The % cell you clicked: its notes show under the grid.
   const [picked, setPicked] = useState<{ outputId: number; date: string; title: string } | null>(null)
 
+  // The note being edited in that panel, if any.
+  const [editingNote, setEditingNote] = useState<number | null>(null)
+  const tasks = useTasks() // for the task picker when you edit a note
+
   useEffect(() => setPicked(null), [period])
+  useEffect(() => setEditingNote(null), [picked])
+
+  async function deleteNote(note: Entry) {
+    if (!confirm(`Delete the note "${note.text}"?`)) return
+    await window.pong.deleteEntry(note.id)
+    setEditingNote(null)
+    props.onChange()
+  }
 
   useEffect(() => {
     window.pong.getSettings().then((s) => setCodesRow(s.codesRow))
@@ -214,15 +228,49 @@ export default function CutoffView(props: { version: number; onChange: () => voi
               ✕
             </button>
           </div>
-          {pickedNotes.map((e) => (
-            <div key={e.id} className="cell-note">
-              <span className="note-time">{time12(e.createdAt.slice(11, 16))}</span>
-              <span>{e.text}</span>
-              <span className="pill" style={{ background: PCT_STYLE[e.progress!].bg, color: PCT_STYLE[e.progress!].fg }}>
-                {e.progress! * 100}%
-              </span>
-            </div>
-          ))}
+          {pickedNotes.map((e) =>
+            editingNote === e.id ? (
+              // Same editor as the Today tab: text, time, task and %. Moving the note to
+              // another task moves its % to that row on the sheet.
+              <NoteEditor
+                key={e.id}
+                tasks={tasks}
+                entry={e}
+                onCancel={() => setEditingNote(null)}
+                onDelete={() => deleteNote(e)}
+                onSave={async (draft) => {
+                  await window.pong.updateEntry(e.id, draft)
+                  setEditingNote(null)
+                  props.onChange()
+                }}
+              />
+            ) : (
+              <div key={e.id} className="cell-note">
+                <span className="note-time">{time12(e.createdAt.slice(11, 16))}</span>
+                <span>{e.text}</span>
+                <span className="pill" style={{ background: PCT_STYLE[e.progress!].bg, color: PCT_STYLE[e.progress!].fg }}>
+                  {e.progress! * 100}%
+                </span>
+                <button className="ghost" aria-label="Edit note" title="Edit" onClick={() => setEditingNote(e.id)}>
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16">
+                    <path d="M3 13l.8-3.2L10.5 3l2.5 2.5-6.8 6.7L3 13z" stroke="#6B6259" strokeWidth="1.5" fill="none" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <button className="ghost" aria-label="Delete note" title="Delete" onClick={() => deleteNote(e)}>
+                  <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16">
+                    <path
+                      d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5"
+                      stroke="#A3341F"
+                      strokeWidth="1.5"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            )
+          )}
           <span className="muted" style={{ fontSize: 12 }}>
             {pickedNotes.length > 1
               ? 'The DAR cell shows the highest % of these. The notes stay in Pong; only the % goes on the sheet.'
@@ -284,7 +332,7 @@ export default function CutoffView(props: { version: number; onChange: () => voi
               {missing === 0 ? 'no missing days' : `${missing} ${missing === 1 ? 'weekday' : 'weekdays'} with no notes`}
             </span>
             <span className="muted" style={{ fontSize: 13 }}>
-              Click a % to see the notes behind it. Click a weekday's date to mark sick leave, personal leave or a holiday.
+              Click a % to see, edit or delete the notes behind it. Click a weekday's date to mark sick leave, personal leave or a holiday.
             </span>
           </div>
           <button className="big-teal" disabled={busy} onClick={exportSheet}>

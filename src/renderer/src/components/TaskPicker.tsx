@@ -1,10 +1,10 @@
-// TaskPicker.tsx: "Which DAR task?" Five recent MFOs as chips, plus "+ New task",
-// which opens a small panel: pick any other MFO, or add a new one under a duty (or
-// under a new duty, picked as "+ New duty" in A.) or B.)).
+// TaskPicker.tsx: "Which DAR task?" Five recent MFOs as chips, an "All tasks…" picker
+// for any other MFO, and "+ New task", which opens a small panel to add a new one
+// under a duty (or under a new duty, picked as "+ New duty" in A.) or B.)).
 // Runs in the RENDERER; new duties and MFOs are saved through window.pong (main).
 import { useState, type KeyboardEvent } from 'react'
 import type { Category, Output } from '../../../shared/types'
-import { dutyLine, type Tasks } from './useTasks'
+import { dutyLine, dutyTag, type Tasks } from './useTasks'
 
 export default function TaskPicker(props: {
   tasks: Tasks
@@ -68,15 +68,43 @@ export default function TaskPicker(props: {
           <button
             key={o.id}
             type="button"
-            className="chip"
-            title={o.title}
+            className="chip task"
+            title={`${o.title}
+${dutyTag(o, tasks.duties)}`}
             aria-pressed={o.id === value}
             // Clicking the selected chip again untags the note.
             onClick={() => onChange(o.id === value ? null : o.id)}
           >
-            {o.short || o.title}
+            <span className="chip-title">{o.short || o.title}</span>
+            <span className="chip-duty">{dutyTag(o, tasks.duties)}</span>
           </button>
         ))}
+        {/* Every active task, grouped by duty, for the ones not among the recent chips.
+            Picking one makes it the selected chip. */}
+        {others.length > 0 && (
+          <select
+            className="chip all"
+            aria-label="All tasks"
+            value=""
+            onChange={(e) => {
+              onChange(Number(e.target.value))
+              setOpen(false)
+            }}
+          >
+            <option value="">All tasks…</option>
+            {activeDuties.map((d) => (
+              <optgroup key={d.id} label={`${d.category === 'core' ? 'A.)' : 'B.)'} ${d.title}`}>
+                {others
+                  .filter((o) => o.dutyId === d.id)
+                  .map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.title}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        )}
         <button type="button" className="chip new" aria-expanded={open} onClick={() => setOpen(!open)}>
           + New task
         </button>
@@ -84,30 +112,7 @@ export default function TaskPicker(props: {
 
       {open && (
         <div className="panel">
-          {others.length > 0 && (
-            <select
-              aria-label="Pick another task"
-              value=""
-              onChange={(e) => {
-                onChange(Number(e.target.value))
-                setOpen(false)
-              }}
-            >
-              <option value="">Pick from all tasks…</option>
-              {activeDuties.map((d) => (
-                <optgroup key={d.id} label={d.title}>
-                  {others
-                    .filter((o) => o.dutyId === d.id)
-                    .map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.title}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-            </select>
-          )}
-          <span className="hint">Or add a new task (MFO):</span>
+          <span className="hint">Add a new task (MFO):</span>
           <select
             aria-label="Duty"
             value={duty}

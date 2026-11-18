@@ -33,12 +33,15 @@ export interface TickInput {
   now: Date
   dueAt: number | null // when the next check-in is due; null = not planned yet
   paused: boolean // Pause 1 hr, On a break, Later (snooze)
-  quiet: boolean // idle, locked, full-screen app, or Pong is already asking
+  quiet: boolean // idle, locked, full-screen app, out for lunch, or Pong is already asking
   random: number // 0..1
+  // OT you said yes to, or a weekend/holiday session (Phase 9): keep asking past your
+  // work hours and on non-work days, until you time out. Optional: false when left out.
+  extended?: boolean
 }
 
 // One step of the scheduler.
-//   Outside work time: forget the plan (dueAt null), never ask.
+//   Outside work time (and not in an extended session): forget the plan, never ask.
 //   Coming into work time with no plan: plan the first check-in 5-10 minutes from now.
 //   Due, but paused or quiet: wait (keep dueAt), and ask at the first good moment.
 //     That's also why coming back from a locked screen asks at most once: one check-in
@@ -46,7 +49,7 @@ export interface TickInput {
 //   Due and free: ask, and plan the next one an interval from now.
 export function tick(input: TickInput, s: ScheduleSettings): { dueAt: number | null; ask: boolean } {
   const now = input.now.getTime()
-  if (!isWorkTime(input.now, s)) return { dueAt: null, ask: false }
+  if (!input.extended && !isWorkTime(input.now, s)) return { dueAt: null, ask: false }
   if (input.dueAt === null) {
     return { dueAt: now + (FIRST_MIN + input.random * FIRST_SPREAD_MIN) * MINUTE, ask: false }
   }

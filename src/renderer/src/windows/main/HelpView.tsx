@@ -20,6 +20,7 @@ const SECTIONS = [
   { id: 'install', title: 'Install Pong' },
   { id: 'setup', title: 'First run' },
   { id: 'daily', title: 'Every day: check-ins' },
+  { id: 'attendance', title: 'Time in, time out and OT' },
   { id: 'git', title: 'Your commits as notes' },
   { id: 'missed', title: 'Days with no notes' },
   { id: 'today', title: 'Today: fix or add notes' },
@@ -136,7 +137,7 @@ export default function HelpView() {
               task.
             </li>
             <li>
-              <b>+ New task</b> lets you pick any other task, or add a new one under a duty.
+              <b>All tasks…</b> lets you pick any other task, and <b>+ New task</b> adds a new one under a duty.
             </li>
             <li>
               Pick <b>How far along?</b> 25, 50, 75 or 100%, then press <b>Enter</b> (or Save note). <b>Esc</b> closes
@@ -155,6 +156,41 @@ export default function HelpView() {
             minutes, while the screen is locked, during full-screen apps (presentations, video calls) and while paused.
             If a question was due while you were away, he asks once when you're back.
           </p>
+        </Section>
+
+        <Section id="attendance">
+          <p>
+            The first time Pong sees you at the PC each day, he asks <b>Time in at 7:52 AM?</b> That's the moment he
+            first saw you (Pong starting, or you unlocking the PC). Click <b>Time in</b>, or <b>Not working today</b>{' '}
+            to keep him quiet for the day.
+          </p>
+          <ul>
+            <li>
+              <b>Time out:</b> hover over Pong and click <b>Time out</b> above his head, or use the tray menu. Leaving a
+              few minutes early (up to 15 minutes before your end time, like 4:58) counts as your end time, 5:00. After
+              that, the real time is kept.
+            </li>
+            <li>
+              <b>OT:</b> on a work day, 15 minutes after your end time Pong asks <b>Still working? Overtime?</b> Say{' '}
+              <b>Yes, OT</b> and the check-ins keep coming until you time out. At time-out he asks whether the OT was
+              approved: <b>Yes</b>, <b>No</b>, or <b>Not yet</b> (Today keeps reminding you).
+            </li>
+            <li>
+              <b>Weekends and holidays</b> aren't OT. The whole session counts as <b>extended hours</b>, which needs an
+              Authority to Work on Extended Hours (ATWEH). At time-out Pong asks whether you have one.
+            </li>
+            <li>
+              <b>Forgot to time out?</b> Next time, Pong says when he last saw you and offers that as your time-out.
+            </li>
+            <li>
+              <b>Lunch</b> (optional, Settings, Track lunch): Lunch out and Back from lunch buttons. Check-ins pause while
+              you're out.
+            </li>
+          </ul>
+          <div className="help-tip">
+            Every time is editable in Today's Attendance card. Not sure your office has a minimum before OT counts? Leave{' '}
+            <b>Count OT only after</b> on Any: Pong keeps the exact minutes, and changing it later recounts every day.
+          </div>
         </Section>
 
         <Section id="git">
@@ -236,6 +272,15 @@ export default function HelpView() {
               <b>Mark done</b> when a task is finished: it drops off future sheets, but stays on any sheet where it has a
               %. <b>Archive</b> does the same for a whole duty. Tick <b>Show archived</b> to bring one back.
             </li>
+            <li>
+              Task under the wrong duty? Drag it by its <b>⠿</b> handle onto the right duty: its notes and % move with
+              it. Drop it on another task (or on a duty that already has a task with the same name) to <b>merge</b> the
+              two rows into one. Pong asks before merging.
+            </li>
+            <li>
+              On the check-in card, each task chip shows its duty underneath, so two tasks with the same name can be
+              told apart.
+            </li>
           </ul>
         </Section>
 
@@ -251,6 +296,10 @@ export default function HelpView() {
             <li>
               Check the grid. Blue-gray boxes are your highest % per day; gray boxes are days off. Click a weekday's date
               to cycle it through <b>Sick Leave</b>, <b>Personal Leave</b>, <b>Holiday</b> and back to a work day.
+            </li>
+            <li>
+              Click a % box to see the notes behind it. The pencil edits a note (text, time, task or %); the bin deletes
+              it. Moving a note to another task moves its % to that row.
             </li>
             <li>
               The line at the bottom shows days attended, the number of tasks, and any weekdays with no notes. Fill

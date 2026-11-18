@@ -2,9 +2,10 @@
 // Every 30 seconds it hands the current situation to tick() (shared/schedule.ts, pure
 // and tested) and does what it says. All the rules live there; this file is the clock.
 import type { DatabaseSync } from 'node:sqlite'
+import { checkAttendance } from './attendance'
 import { events } from './events'
 import { quietReason } from './idle'
-import { ask, isBusy } from './pong'
+import { ask, askAttendance, isBusy } from './pong'
 import * as q from './queries'
 import { getSettings } from './settings'
 import { missedDays, periodFor } from '../shared/cutoff'
@@ -65,13 +66,27 @@ export function startScheduler(db: DatabaseSync): void {
   const step = (): void => {
     const s = getSettings()
     if (!s.setupDone) return // no check-ins before the first-run form is done
+    const now = new Date()
+    const reason = quietReason()
+
+    // Attendance first (Phase 9): time-in, a forgotten time-out, "Still working?", lunch.
+    // At the PC = not away and not idle; a full-screen app still counts as here, but
+    // Pong waits for it to end before asking.
+    const attendance = checkAttendance(now, reason === null || reason === 'fullscreen')
+    if (attendance.due && reason === null && !isBusy()) {
+      askAttendance(attendance.due)
+      return
+    }
+
     const next = tick(
       {
-        now: new Date(),
+        now,
         dueAt,
         paused: isPaused(),
-        quiet: quietReason() !== null || isBusy(),
-        random: Math.random()
+        // Out for lunch or "Not working today" keeps check-ins quiet too.
+        quiet: reason !== null || isBusy() || attendance.quiet,
+        random: Math.random(),
+        extended: attendance.extended // OT or a weekend session: keep asking after hours
       },
       s
     )

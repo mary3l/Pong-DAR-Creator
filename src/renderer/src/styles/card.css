@@ -87,6 +87,37 @@
   white-space: nowrap;
 }
 
+/* A task chip: its name, and under it the duty it belongs to. */
+.chip.task {
+  height: auto;
+  min-height: 44px;
+  padding: 5px 14px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+}
+
+.chip-title,
+.chip-duty {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-duty {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.chip[aria-pressed='true'] .chip-duty {
+  color: var(--teal-dark);
+}
+
 .chip[aria-pressed='true'],
 .pick[aria-pressed='true'] {
   border-color: var(--teal);
@@ -97,6 +128,15 @@
 .chip.new {
   border-style: dashed;
   color: var(--teal-dark);
+}
+
+/* "All tasks…": a native dropdown dressed as a chip, next to "+ New task". */
+.chip.all {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--teal-dark);
+  cursor: pointer;
 }
 
 .hint {

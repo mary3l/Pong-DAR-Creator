@@ -1,6 +1,6 @@
 # Pong DAR Buddy
 
-Windows tray app. Pong, a cartoon turtle, sits on the taskbar and asks "What are you up to?" about once an hour during work hours. Each answer is one line tagged to a DAR task (MFO) with progress 25/50/75/100%. At each cutoff, Pong adds a new, correctly formatted sheet to the user's Job Order Employee Daily Accomplishment Report (DAR) workbook.
+Windows tray app. Pong, a cartoon turtle, sits on the taskbar and asks "What are you up to?" about once an hour during work hours. It also keeps the time-in, lunch and time-out (OT on work days, extended hours on weekends and holidays). Each answer is one line tagged to a DAR task (MFO) with progress 25/50/75/100%. At each cutoff, Pong adds a new, correctly formatted sheet to the user's Job Order Employee Daily Accomplishment Report (DAR) workbook.
 
 Single user, local only, no network calls. Owner: Mariel G. Mabano, Information Systems Designer, DCWD Corporate Planning Department.
 
@@ -32,7 +32,8 @@ src/
     index.ts         app lifecycle, single instance, opens the DB, --hidden start
     ipc.ts           every ipcMain.handle, with argument checks
     windows.ts       create + show/hide the three windows, hide on close, check-in opener
-    events.ts        in-main event bus (entry-saved, settings-changed ...)
+    events.ts        in-main event bus (entry-saved, attendance-saved, settings-changed ...)
+    attendance.ts    time-in / lunch / time-out, first & last seen (rules in shared/attendance.ts)
     tray.ts          tray icon + menu
     shortcuts.ts     global hotkeys
     db.ts            node:sqlite, migrations
@@ -57,6 +58,7 @@ src/
     dates.ts         local dates as 'YYYY-MM-DD', UTC-safe math
     cutoff.ts        period math, DAR grid builder, missed-day wording
     schedule.ts      "is a check-in due?" (tick)
+    attendance.ts    OT / extended hours, time-out snap, "is an attendance question due?"
     gitlog.ts        git log output -> commit suggestions, time window, de-dupe
     settings.ts      Settings type, defaults, validation
     placement.ts     taskbar edge + pong window bounds
@@ -65,7 +67,7 @@ src/
     index.html       one page for all three windows
     src/main.tsx     picks the screen from ?window=pong|checkin|main
     src/windows/pong/      turtle + bubble + toasts, click-through hover reports
-    src/windows/checkin/   entry card, missed-day card
+    src/windows/checkin/   entry card, missed-day card, extra-time (OT / ATWEH) card
     src/windows/main/      first run, Today, Cutoff, Tasks, Settings
     src/components/        Pong.tsx, TaskPicker, PercentPicker, CommitSuggestions, useTasks
 scripts/make-icons.mjs  npm run icons: build/pong.svg -> build/icon.png, tray.png, tray@2x.png
@@ -99,6 +101,9 @@ CREATE TABLE entries (id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, work_dat
 CREATE TABLE day_status (date TEXT PRIMARY KEY, type TEXT CHECK (type IN ('rest','sick','personal','holiday')));
 CREATE TABLE exports (id INTEGER PRIMARY KEY, period_start TEXT, period_end TEXT, sheet_name TEXT, exported_at TEXT);
 CREATE INDEX idx_entries_date ON entries(work_date);
+-- migration 2 (Phase 9)
+CREATE TABLE attendance (date TEXT PRIMARY KEY, time_in TEXT, lunch_out TEXT, lunch_in TEXT, time_out TEXT,
+  last_seen TEXT, non_work_day INTEGER DEFAULT 0, approved TEXT CHECK (approved IN ('yes','no','pending')), updated_at TEXT);
 ```
 Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA user_version`. The DB file is `pong.db` in `app.getPath('userData')` (`%APPDATA%\Pong` when installed, `%APPDATA%\Pong-dev` under `npm run dev`).
 
@@ -109,6 +114,9 @@ Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA use
 - Day off = a day_status row, or a weekend date with no notes. It becomes one merged cell down the whole function block for that day, text "Rest Day", "Sick Leave", "Personal Leave" or "Holiday". A weekend with notes is a normal work day.
 - Days attended = dates in the period with at least one note, excluding day_status dates. The sample's Oct 3-17 gives 12.
 - Missed day = a past date in the current period with no notes and no day_status row, on or after settings.startedOn (the first-run date).
+- Attendance: one row per day you timed in; a row with no time_in = "Not working today". Times are full local timestamps, so a time-out after midnight belongs to the time-in day. OT minutes are never stored: worked out from the times + settings.
+- OT = time after workEnd on a work day, counted only if >= settings.otAfterMin (default 0). A non-work day (weekend, holiday, leave) is not OT: the whole session (minus logged lunch) is **extended hours**, which needs an Authority to Work on Extended Hours (ATWEH), and always counts.
+- Time-out snap: clicking Time out up to 15 min before workEnd records workEnd (4:58 -> 5:00). After workEnd, or earlier than 15 min before, the real time is kept. Same on Saturdays.
 - work_date is the local date (Asia/Manila), never UTC. Never use `toISOString().slice(0, 10)` for it.
 
 ## DAR sheet format (from "October 3 - 17" in the sample)
@@ -134,10 +142,11 @@ Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA use
 ## UX rules
 - Automatic check-ins never take keyboard focus. The bubble lives in the pong window (focusable false, shown with `showInactive()`); checkin is shown and focused only after a click or hotkey.
 - Pong moods (see docs/design/Pong.tsx): sleep (head in shell), peek, ask, listen, happy, snooze.
-- Entry card: one-line input; 5 most recent MFOs as chips + "+ New task"; % buttons 25/50/75/100; last MFO and % preselected; Enter saves, Esc hides.
+- Entry card: one-line input; 5 most recent MFOs as chips + "All tasks…" dropdown + "+ New task"; % buttons 25/50/75/100; last MFO and % preselected; Enter saves, Esc hides.
 - Missed days: on the first check-in of a day, ask about each missed day, oldest first. "Rest day yesterday?" (or "Rest day on Saturday?"). Yes -> Rest day / Sick leave / Personal leave -> Save writes day_status. No -> entry card for that date; add several logs; "Done with <day>".
 - Hotkeys: Ctrl+Alt+L log, Ctrl+Alt+K open main window, Ctrl+Alt+P pause 1 hour (Electron accelerators `Control+Alt+L` etc.).
 - Commit suggestions: local git repos only (settings.repos), never GitHub or any network. Your commits (repo user.email, --all, --no-merges) since the last note today, or the whole day on the missed-day card. Picking one fills the note and the repo's usual task; the user still picks the % and saves. New repo paths only come from the folder dialog in main.
+- Attendance: the first moment Pong sees you each day (app start, unlock, wake) is the suggested time-in ("Time in at 7:52 AM?" [Time in] [Not working today]). Time out from the hover buttons above Pong or the tray. Work day, 15 min past workEnd and still timed in: "Still working? Overtime?" [Yes, OT] keeps check-ins going after hours. At time-out with extra time, the checkin window asks "Was the OT approved?" / "Do you have an ATWEH?" (Yes / Not yet / No). A session left open and not seen for an hour: "You forgot to time out", offering the last-seen time. Lunch (optional) pauses check-ins; "Back from lunch?" after 90 min.
 - Stay quiet: outside work hours (default 8:00-17:00, Mon-Fri), lunch 12:00-13:00, idle 10+ min, full-screen foreground app, paused.
 - Colors: shell #5E9E6E, skin #A9D69B, flower #F5B83D, teal #2F7F7A, mint #DCEBE4, ink #2A2622.
 

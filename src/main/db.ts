@@ -75,8 +75,21 @@ const MIGRATIONS: string[] = [
   -- An index is like a book's index: "notes for Oct 5" jumps straight to them
   -- instead of reading every entry. Pong searches entries by date constantly.
   CREATE INDEX idx_entries_date ON entries(work_date);
+  `,
+  // Migration 2 (Phase 9): attendance. One row per day you timed in (or said "Not working
+  // today": a row with no time_in). Times are full local timestamps, so a time-out after
+  // midnight still belongs to the day it started. OT and extended-hours minutes are not
+  // stored: they're worked out from these times and the current settings.
   `
-  // Migration 2 would go here, after a comma.
+  CREATE TABLE attendance (
+    date TEXT PRIMARY KEY,
+    time_in TEXT, lunch_out TEXT, lunch_in TEXT, time_out TEXT,
+    last_seen TEXT,
+    non_work_day INTEGER DEFAULT 0,
+    approved TEXT CHECK (approved IN ('yes','no','pending')),
+    updated_at TEXT
+  );
+  `
 ]
 
 // ---------------------------------------------------------------------------

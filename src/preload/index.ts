@@ -55,11 +55,16 @@ const api: PongApi = {
   recentOutputs: () => ipcRenderer.invoke('outputs:recent'),
   addOutput: (dutyId, title) => ipcRenderer.invoke('outputs:add', dutyId, title),
   updateOutput: (id, changes) => ipcRenderer.invoke('outputs:update', id, changes),
+  moveOutput: (id, dutyId) => ipcRenderer.invoke('outputs:move', id, dutyId),
+  mergeOutput: (fromId, intoId) => ipcRenderer.invoke('outputs:merge', fromId, intoId),
 
   getProfile: () => ipcRenderer.invoke('profile:get'),
   setProfile: (changes) => ipcRenderer.invoke('profile:set', changes),
   dayStatusInPeriod: (period) => ipcRenderer.invoke('dayStatus:inPeriod', period),
   setDayStatus: (date, type) => ipcRenderer.invoke('dayStatus:set', date, type),
+  getAttendance: (date) => ipcRenderer.invoke('attendance:get', date),
+  attendanceInPeriod: (period) => ipcRenderer.invoke('attendance:inPeriod', period),
+  setAttendance: (date, changes) => ipcRenderer.invoke('attendance:set', date, changes),
 
   buildGrid: (period) => ipcRenderer.invoke('grid:build', period),
   exportDar: (period, replace) => ipcRenderer.invoke('dar:export', period, replace),

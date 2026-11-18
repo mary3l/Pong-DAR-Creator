@@ -13,9 +13,11 @@
 // Each ? in the SQL is filled by the arguments, in order. NEVER build SQL by gluing
 // strings: a note like  it's done  would break the quotes. ? placeholders are always safe.
 import type { DatabaseSync } from 'node:sqlite'
+import { transaction } from './db'
 import { localDate, localTimestamp } from '../shared/dates'
 import type {
-  Category, DayStatus, DayType, Duty, Entry, EntryChanges, ExportRecord, NewEntry, Output, Period, Profile
+  Attendance, AttendanceChanges, Category, DayStatus, DayType, Duty, Entry, EntryChanges, ExportRecord, NewEntry,
+  Output, Period, Profile
 } from '../shared/types'
 
 // The column list for entries, renamed to match the Entry type. Written once, reused below.
@@ -126,7 +128,16 @@ export function listOutputs(db: DatabaseSync): Output[] {
 
 // Adds an MFO under a duty. If dutyId doesn't exist, SQLite throws
 // "FOREIGN KEY constraint failed" (foreign_keys is ON, see db.ts).
+// The same title under the same duty is never added twice: the one already there is
+// reopened and returned, so two DAR rows can't end up with the same name.
 export function addOutput(db: DatabaseSync, dutyId: number, title: string, now: Date = new Date()): Output {
+  const twin = db
+    .prepare(`SELECT id FROM outputs WHERE duty_id = ? AND lower(trim(title)) = lower(trim(?)) ORDER BY id LIMIT 1`)
+    .get(dutyId, title) as { id: number } | undefined
+  if (twin) {
+    db.prepare(`UPDATE outputs SET status = 'active' WHERE id = ?`).run(twin.id)
+    return db.prepare(`SELECT ${OUTPUT_COLUMNS} FROM outputs WHERE id = ?`).get(twin.id) as unknown as Output
+  }
   const { lastInsertRowid } = db
     .prepare(`INSERT INTO outputs (duty_id, title, created_at) VALUES (?, ?, ?)`)
     .run(dutyId, title, localTimestamp(now))
@@ -140,6 +151,25 @@ export function updateOutput(
 ): void {
   if (changes.title !== undefined) db.prepare(`UPDATE outputs SET title = ? WHERE id = ?`).run(changes.title, id)
   if (changes.status !== undefined) db.prepare(`UPDATE outputs SET status = ? WHERE id = ?`).run(changes.status, id)
+}
+
+// Moves an MFO, with all its notes, under another duty (drag and drop in the Tasks tab).
+export function moveOutput(db: DatabaseSync, id: number, dutyId: number): void {
+  db.prepare(`UPDATE outputs SET duty_id = ? WHERE id = ?`).run(dutyId, id)
+}
+
+// Merges two MFOs into one row: every note of `fromId` is re-tagged to `intoId`, then
+// `fromId` is deleted. The row stays active if either was. Used to fix duplicates,
+// e.g. "Expanded Service Coverage" added under two duties.
+export function mergeOutput(db: DatabaseSync, fromId: number, intoId: number): void {
+  if (fromId === intoId) return
+  transaction(db, () => {
+    const from = db.prepare(`SELECT status FROM outputs WHERE id = ?`).get(fromId) as { status: string } | undefined
+    if (!from) return
+    db.prepare(`UPDATE entries SET output_id = ? WHERE output_id = ?`).run(intoId, fromId)
+    if (from.status === 'active') db.prepare(`UPDATE outputs SET status = 'active' WHERE id = ?`).run(intoId)
+    db.prepare(`DELETE FROM outputs WHERE id = ?`).run(fromId)
+  })
 }
 
 // The check-in card's chips: active MFOs (of duties still in use), most recently
@@ -236,6 +266,66 @@ export function setDayStatus(db: DatabaseSync, date: string, type: DayType | nul
     ).run(date, type)
   }
 }
+// ---- attendance (Phase 9): one row per day you timed in, or said "Not working today"
+
+const ATTENDANCE_COLUMNS = `date, time_in AS timeIn, lunch_out AS lunchOut, lunch_in AS lunchIn,
+  time_out AS timeOut, last_seen AS lastSeen, non_work_day AS nonWorkDay, approved`
+
+// SQLite stores non_work_day as 0/1; TypeScript wants true/false.
+type AttendanceRow = Omit<Attendance, 'nonWorkDay'> & { nonWorkDay: number }
+const toAttendance = (row: AttendanceRow): Attendance => ({ ...row, nonWorkDay: row.nonWorkDay === 1 })
+
+export function attendanceFor(db: DatabaseSync, date: string): Attendance | null {
+  const row = db.prepare(`SELECT ${ATTENDANCE_COLUMNS} FROM attendance WHERE date = ?`).get(date)
+  return row ? toAttendance(row as unknown as AttendanceRow) : null
+}
+
+export function attendanceInPeriod(db: DatabaseSync, period: Period): Attendance[] {
+  const rows = db
+    .prepare(`SELECT ${ATTENDANCE_COLUMNS} FROM attendance WHERE date BETWEEN ? AND ? ORDER BY date`)
+    .all(period.start, period.end) as unknown as AttendanceRow[]
+  return rows.map(toAttendance)
+}
+
+// The newest earlier day you timed in and never out: "You didn't time out on Thursday".
+export function openSessionBefore(db: DatabaseSync, date: string): Attendance | null {
+  const row = db
+    .prepare(
+      `SELECT ${ATTENDANCE_COLUMNS} FROM attendance
+       WHERE date < ? AND time_in IS NOT NULL AND time_out IS NULL ORDER BY date DESC LIMIT 1`
+    )
+    .get(date)
+  return row ? toAttendance(row as unknown as AttendanceRow) : null
+}
+
+// Creates the day's row or changes the fields you pass, like setProfile.
+// setAttendance(db, date, {}) on a new day = "Not working today" (a row with no time-in).
+export function setAttendance(
+  db: DatabaseSync,
+  date: string,
+  changes: AttendanceChanges & { lastSeen?: string | null },
+  now: Date = new Date()
+): Attendance {
+  const empty: Attendance = {
+    date, timeIn: null, lunchOut: null, lunchIn: null, timeOut: null, lastSeen: null, nonWorkDay: false, approved: null
+  }
+  const a = { ...(attendanceFor(db, date) ?? empty), ...changes }
+  db.prepare(
+    `INSERT INTO attendance (date, time_in, lunch_out, lunch_in, time_out, last_seen, non_work_day, approved, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (date) DO UPDATE SET
+       time_in = excluded.time_in, lunch_out = excluded.lunch_out, lunch_in = excluded.lunch_in,
+       time_out = excluded.time_out, last_seen = excluded.last_seen, non_work_day = excluded.non_work_day,
+       approved = excluded.approved, updated_at = excluded.updated_at`
+  ).run(a.date, a.timeIn, a.lunchOut, a.lunchIn, a.timeOut, a.lastSeen, a.nonWorkDay ? 1 : 0, a.approved, localTimestamp(now))
+  return a
+}
+
+// The scheduler, every half minute while you're at the PC: "still here".
+export function touchAttendance(db: DatabaseSync, date: string, stamp: string): void {
+  db.prepare(`UPDATE attendance SET last_seen = ? WHERE date = ?`).run(stamp, date)
+}
+
 // ---- exports (a history of sheets added to the workbook)
 
 export function recordExport(db: DatabaseSync, period: Period, sheetName: string, now: Date = new Date()): void {

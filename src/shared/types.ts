@@ -109,9 +109,43 @@ export interface ExportResult {
 // What the check-in window should show when main opens it.
 //   entry:  "What are you up to?" for today. source says how it was opened.
 //   missed: walk through past days with no notes, oldest first (Phase 4).
+//   extra:  after a time-out with extra time: "Was the OT approved?" on a work day,
+//           "Do you have an ATWEH?" on a weekend or holiday (Phase 9).
 export type CheckinRequest =
   | { mode: 'entry'; source: 'checkin' | 'hotkey' }
   | { mode: 'missed'; days: string[] }
+  | { mode: 'extra'; date: string }
+
+// ---- Attendance (Phase 9)
+
+export type Approval = 'yes' | 'no' | 'pending'
+
+// One day's time record. Times are full local timestamps ('2026-11-06T07:52:00'), so a
+// time-out after midnight still belongs to the day you timed in. A row with no timeIn
+// means you told Pong "Not working today".
+export interface Attendance {
+  date: string // the day you timed in, 'YYYY-MM-DD'
+  timeIn: string | null
+  lunchOut: string | null
+  lunchIn: string | null
+  timeOut: string | null
+  lastSeen: string | null // the last time Pong saw you at the PC during this session
+  // A weekend, holiday or leave day. Its whole session is extended hours, which needs
+  // an Authority to Work on Extended Hours (ATWEH); a work day's extra time is OT.
+  nonWorkDay: boolean
+  approved: Approval | null // OT approved / ATWEH in hand. null = not asked yet
+}
+
+// What the renderer (Today view, extra-time card) may change on a day's record.
+export type AttendanceChanges = Partial<
+  Pick<Attendance, 'timeIn' | 'lunchOut' | 'lunchIn' | 'timeOut' | 'nonWorkDay' | 'approved'>
+>
+
+// Where today's session stands, for the hover buttons and the tray menu.
+//   off: attendance is switched off in Settings
+//   none: not timed in yet;  declined: "Not working today"
+//   in / lunch: timed in (and out for lunch);  out: timed out
+export type SessionState = 'off' | 'none' | 'declined' | 'in' | 'lunch' | 'out'
 
 // ---- Pong on the taskbar (Phases 4 and 6)
 
@@ -121,17 +155,33 @@ export type PongMood = 'sleep' | 'peek' | 'ask' | 'listen' | 'happy' | 'snooze'
 //   ask:    "What are you up to?" [Tell Pong] [Later] [On a break]
 //   missed: "Good morning! I didn't hear from you on ..." [Fill them in] [Later]
 //   toast:  a short dark note after something happened ("Saved to ...")
+//   time-in:    "Good morning! Time in at 7:52 AM?" [Time in] [Not working today]
+//               nonWork names the day when it isn't a work day ("Saturday", "a holiday")
+//   forgot-out: "You didn't time out on Thursday. Last seen 5:42 PM." [Use 5:42 PM] [Fix in Today]
+//   ot-ask:     "Still working? Overtime?" [Yes, OT] [Time out now] [I left at 5:00 PM]
+//   lunch-back: "Back from lunch?" [I'm back] [Not yet]
+// Times in bubbles are 'HH:MM'; the renderer shows them as 7:52 AM.
 export type Bubble =
   | { kind: 'ask'; sub: string }
   | { kind: 'missed'; days: string[] }
   | { kind: 'toast'; title: string; sub: string }
+  | { kind: 'time-in'; at: string; nonWork: string | null }
+  | { kind: 'forgot-out'; date: string; lastSeen: string }
+  | { kind: 'ot-ask'; end: string }
+  | { kind: 'lunch-back' }
 
 // Main owns this and sends it to the pong window whenever it changes.
 export interface PongState {
   mood: PongMood
   bubble: Bubble | null
   animations: boolean // the Animations setting
+  session: SessionState // which buttons show when you hover over Pong
+  trackLunch: boolean // the Track lunch setting: show Lunch out / Back from lunch
 }
 
 // What a click in the pong window asks main to do.
-export type PongAction = 'click' | 'tell' | 'later' | 'break' | 'fill' | 'dismiss'
+//   time-in ... fix-today: the attendance buttons (bubbles and hover chips)
+export type PongAction =
+  | 'click' | 'tell' | 'later' | 'break' | 'fill' | 'dismiss'
+  | 'time-in' | 'not-working' | 'time-out' | 'lunch-out' | 'lunch-in'
+  | 'ot-yes' | 'left-at' | 'use-last-seen' | 'fix-today'

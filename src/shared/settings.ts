@@ -21,6 +21,11 @@ export interface Settings {
   quietWhenIdle: boolean // skip while idle 10+ min
   quietFullScreen: boolean // skip during presentations, games, full-screen video
   askMissedDays: boolean // "Ask about days with no notes"
+  // Attendance (Phase 9)
+  attendance: boolean // "Time-in and time-out": off = no time-in question, no OT checks
+  trackLunch: boolean // Lunch out / Back from lunch buttons
+  otReminder: boolean // "Still working? Overtime?" 15 min after your end time
+  otAfterMin: 0 | 15 | 30 | 60 // "Count OT only after": shorter extra time isn't OT
   // General
   autostart: boolean // start with Windows (hidden: tray and Pong only)
   animations: boolean
@@ -44,6 +49,10 @@ export const DEFAULT_SETTINGS: Settings = {
   quietWhenIdle: true,
   quietFullScreen: true,
   askMissedDays: true,
+  attendance: true,
+  trackLunch: false,
+  otReminder: true,
+  otAfterMin: 0, // every extra minute counts until you know your office's rule
   autostart: true,
   animations: true,
   spot: 'taskbar',
@@ -54,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 export const INTERVALS: Settings['intervalMin'][] = [30, 45, 60, 90]
+export const OT_AFTER: Settings['otAfterMin'][] = [0, 15, 30, 60]
 
 // '08:30' -> 510 (minutes after midnight). Anything malformed counts as midnight.
 export function minutesOf(time: string): number {
@@ -104,6 +114,9 @@ export function settingsError(changes: Record<string, unknown>): string | null {
         )
           return key
         break
+      case 'otAfterMin':
+        if (!OT_AFTER.includes(value as Settings['otAfterMin'])) return key
+        break
       case 'spot':
         if (value !== 'taskbar' && value !== 'tray') return key
         break
@@ -115,6 +128,9 @@ export function settingsError(changes: Record<string, unknown>): string | null {
       case 'animations':
       case 'setupDone':
       case 'codesRow':
+      case 'attendance':
+      case 'trackLunch':
+      case 'otReminder':
         if (typeof value !== 'boolean') return key
         break
       default:

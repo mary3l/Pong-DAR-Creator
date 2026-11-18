@@ -1,10 +1,12 @@
 // CheckinWindow.tsx: the check-in window. Runs in the RENDERER.
-// Main decides what it shows (window.pong.onCheckinOpen): today's entry card, or the
-// missed days. The window only ever opens after a click or a hotkey, so it may take focus.
+// Main decides what it shows (window.pong.onCheckinOpen): today's entry card, the
+// missed days, or the OT / extended-hours question after a time-out. The window only
+// ever opens after a click or a hotkey, so it may take focus.
 import { useEffect, useRef, useState } from 'react'
 import '../../styles/card.css'
 import type { CheckinRequest } from '../../../../shared/types'
 import EntryCard from './EntryCard'
+import ExtraCard from './ExtraCard'
 import MissedCard from './MissedCard'
 
 export default function CheckinWindow() {
@@ -48,6 +50,7 @@ export default function CheckinWindow() {
   return (
     <div ref={root}>
       {request?.mode === 'entry' && <EntryCard key={opened} source={request.source} onDone={hide} />}
+      {request?.mode === 'extra' && <ExtraCard key={opened} date={request.date} onDone={hide} />}
       {request?.mode === 'missed' && (
         <MissedCard
           key={opened}

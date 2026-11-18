@@ -176,6 +176,21 @@ Done when: the cutoff DAR comes out of Pong and I submit it with only typo fixes
 
 Unsigned installers trigger SmartScreen ("More info -> Run anyway"). Check with IT before installing on the office PC. **Milestone M4: v1.0.**
 
+## Phase 9 · Attendance and overtime
+
+```text
+Read CLAUDE.md. Phase 9: time-in, time-out, lunch, OT and extended hours. Plan first.
+- Migration 2: an attendance table (one row per day, full local timestamps, approved yes/no/pending). Rules pure and tested in src/shared/attendance.ts.
+- Time-in: on the first activity of the day, Pong suggests the time he first saw you; [Time in] [Not working today]. Weekends and holidays say it's extended hours (ATWEH), not OT.
+- Time out from hover buttons above Pong and the tray. Up to 15 min before the end time snaps to the end time (4:58 -> 5:00).
+- "Still working? Overtime?" 15 min after the end time on work days; "Yes, OT" keeps check-ins going. At time-out: "Was the OT approved?" or "Do you have an ATWEH?".
+- Forgotten time-out: offer the last-seen time. Optional lunch tracking. Settings: attendance on/off, track lunch, OT reminder, "Count OT only after" (default Any).
+- Today: an Attendance card with every time editable, OT so far, approvals still "Not yet".
+Done when: a whole day goes time-in -> notes -> OT question -> time-out -> approval without touching a file, and a Saturday shows as extended hours.
+```
+
+Not yet: syncing to Pong Money (an API; needs its URL, sign-in and record format, and changes the no-network rule).
+
 ---
 
 ## Tauri -> Electron cheat sheet

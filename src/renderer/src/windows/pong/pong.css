@@ -105,6 +105,36 @@
   color: #dcd4c8;
 }
 
+/* Attendance buttons above Pong's head while you hover (Phase 9). They fit inside the
+   small 140x150 window: the turtle box starts 30px down. */
+.pong-chips {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  width: 120px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pong-chips button {
+  height: 26px;
+  min-height: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(42, 38, 34, 0.25);
+}
+
+.pong-chips button:hover {
+  background: #2f7f7a;
+}
+
 /* ---- animations (Phase 6). Off with the Animations setting or reduced motion. */
 
 @keyframes pong-bob {

@@ -22,13 +22,17 @@ export default function EntryCard(props: { source: EntrySource; onDone: () => vo
   const input = useRef<HTMLInputElement>(null)
 
   // Once the tasks arrive, preselect the last note's MFO and %. Only once per card,
-  // so it doesn't undo a choice you've already made.
+  // so it doesn't undo a choice you've already made. A finished MFO, or one under an
+  // archived duty, isn't preselected: it would add a stray chip you didn't mean to use.
   useEffect(() => {
     if (preselected.current || !tasks.last) return
     preselected.current = true
-    setOutputId(tasks.last.outputId)
+    const last = tasks.outputs.find((o) => o.id === tasks.last?.outputId)
+    const duty = last && tasks.duties.find((d) => d.id === last.dutyId)
+    if (!last || last.status !== 'active' || !duty || duty.archived) return
+    setOutputId(last.id)
     if (tasks.last.progress) setProgress(tasks.last.progress)
-  }, [tasks.last])
+  }, [tasks.last, tasks.outputs, tasks.duties])
 
   // The window was hidden, not closed: put the cursor back in the box when it's shown again.
   useEffect(() => {

@@ -17,7 +17,45 @@ beforeEach(() => {
 describe('migrations', () => {
   it('creates the tables and sets user_version', () => {
     const { user_version } = db.prepare('PRAGMA user_version').get() as { user_version: number }
-    expect(user_version).toBe(1) // one migration in db.ts so far
+    expect(user_version).toBe(2) // two migrations in db.ts so far
+  })
+})
+
+describe('attendance', () => {
+  const now = new Date(2026, 10, 6, 7, 52)
+  it('creates a day on time-in and changes only what you pass', () => {
+    q.setAttendance(db, '2026-11-06', { timeIn: '2026-11-06T07:52:00' }, now)
+    q.setAttendance(db, '2026-11-06', { timeOut: '2026-11-06T17:00:00', approved: 'pending' }, now)
+    expect(q.attendanceFor(db, '2026-11-06')).toEqual({
+      date: '2026-11-06',
+      timeIn: '2026-11-06T07:52:00',
+      lunchOut: null,
+      lunchIn: null,
+      timeOut: '2026-11-06T17:00:00',
+      lastSeen: null,
+      nonWorkDay: false,
+      approved: 'pending'
+    })
+    expect(q.attendanceFor(db, '2026-11-07')).toBeNull()
+  })
+  it('stores "Not working today" as a row with no time-in', () => {
+    q.setAttendance(db, '2026-11-06', {}, now)
+    expect(q.attendanceFor(db, '2026-11-06')?.timeIn).toBeNull()
+  })
+  it('finds an earlier day that was never timed out', () => {
+    q.setAttendance(db, '2026-11-04', { timeIn: '2026-11-04T08:00:00', timeOut: '2026-11-04T17:00:00' }, now)
+    q.setAttendance(db, '2026-11-05', { timeIn: '2026-11-05T08:00:00', nonWorkDay: true }, now)
+    q.touchAttendance(db, '2026-11-05', '2026-11-05T17:42:00')
+    const open = q.openSessionBefore(db, '2026-11-06')
+    expect(open).toMatchObject({ date: '2026-11-05', lastSeen: '2026-11-05T17:42:00', nonWorkDay: true })
+    expect(q.openSessionBefore(db, '2026-11-05')).toBeNull()
+    expect(q.attendanceInPeriod(db, { start: '2026-11-03', end: '2026-11-17' }).map((a) => a.date)).toEqual([
+      '2026-11-04',
+      '2026-11-05'
+    ])
+  })
+  it('refuses an unknown approval', () => {
+    expect(() => q.setAttendance(db, '2026-11-06', { approved: 'maybe' as never }, now)).toThrow()
   })
 })
 
@@ -95,6 +133,42 @@ describe('duties and MFOs', () => {
     q.updateOutput(db, mfo.id, { title: 'GIS Map', status: 'done' })
     expect(q.listDuties(db)[0]).toMatchObject({ title: 'Frontend System Development', archived: true, sort: 1 })
     expect(q.listOutputs(db)[0]).toMatchObject({ dutyId: duty.id, title: 'GIS Map', status: 'done' })
+  })
+
+  it('reopens the MFO already there instead of adding the same title twice', () => {
+    const duty = q.addDuty(db, 'support', 'PIP Consolidation')
+    const first = q.addOutput(db, duty.id, 'Expanded Service Coverage')
+    q.updateOutput(db, first.id, { status: 'done' })
+    const again = q.addOutput(db, duty.id, ' expanded service coverage ')
+    expect(again).toMatchObject({ id: first.id, status: 'active' })
+    expect(q.listOutputs(db)).toHaveLength(1)
+    // The same title under another duty is a different DAR row: allowed.
+    const other = q.addDuty(db, 'core', 'PIP Maintenance')
+    expect(q.addOutput(db, other.id, 'Expanded Service Coverage').id).not.toBe(first.id)
+  })
+
+  it('moves an MFO and its notes to another duty', () => {
+    const a = q.addDuty(db, 'core', 'A')
+    const b = q.addDuty(db, 'support', 'B')
+    const mfo = q.addOutput(db, a.id, 'Coverage')
+    const note = q.addEntry(db, { text: 'x', outputId: mfo.id, progress: 0.5 })
+    q.moveOutput(db, mfo.id, b.id)
+    expect(q.listOutputs(db)[0]).toMatchObject({ id: mfo.id, dutyId: b.id })
+    expect(q.lastTagged(db)).toMatchObject({ id: note.id, outputId: mfo.id })
+  })
+
+  it('merges a duplicate MFO: its notes move over and it is deleted', () => {
+    const a = q.addDuty(db, 'core', 'A')
+    const b = q.addDuty(db, 'support', 'B')
+    const from = q.addOutput(db, a.id, 'Coverage')
+    const into = q.addOutput(db, b.id, 'Coverage')
+    q.updateOutput(db, into.id, { status: 'done' })
+    q.addEntry(db, { text: 'x', outputId: from.id, progress: 0.25 })
+    q.addEntry(db, { text: 'y', outputId: from.id, progress: 0.75 })
+    q.mergeOutput(db, from.id, into.id)
+    expect(q.listOutputs(db)).toEqual([expect.objectContaining({ id: into.id, status: 'active' })])
+    const tagged = db.prepare('SELECT COUNT(*) AS n FROM entries WHERE output_id = ?').get(into.id) as { n: number }
+    expect(tagged.n).toBe(2)
   })
 
   it('refuses an MFO under a duty that does not exist', () => {

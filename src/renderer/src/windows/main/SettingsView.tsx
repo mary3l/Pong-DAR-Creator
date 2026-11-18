@@ -3,7 +3,7 @@
 // The DAR profile lives in the database (window.pong.setProfile), like in Phase 1.
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTasks } from '../../components/useTasks'
-import { INTERVALS, type GitRepo, type Settings } from '../../../../shared/settings'
+import { INTERVALS, OT_AFTER, type GitRepo, type Settings } from '../../../../shared/settings'
 import type { Profile } from '../../../../shared/types'
 import './settings.css'
 
@@ -171,6 +171,43 @@ function CheckinSettings(props: { settings: Settings; save: (c: Partial<Settings
           on={s.askMissedDays}
           onChange={(askMissedDays) => save({ askMissedDays })}
         />
+      </div>
+      <Heading title="Time in and OT" sub="Pong keeps your time-in, lunch and time-out, and catches extra hours." />
+      <div className="box group">
+        <Toggle
+          label="Time-in and time-out"
+          hint="Asks for your time-in when you're first at the PC; hover over Pong to time out"
+          on={s.attendance}
+          onChange={(attendance) => save({ attendance })}
+        />
+        {s.attendance && (
+          <>
+            <Toggle
+              label="Track lunch"
+              hint="Lunch out and Back from lunch buttons; check-ins pause while you're out"
+              on={s.trackLunch}
+              onChange={(trackLunch) => save({ trackLunch })}
+            />
+            <Toggle
+              label='Ask "Still working? Overtime?"'
+              hint="15 minutes after your work hours end, if you haven't timed out"
+              on={s.otReminder}
+              onChange={(otReminder) => save({ otReminder })}
+            />
+            <Row
+              label="Count OT only after"
+              hint="Shorter extra time on a work day isn't OT. Weekends and holidays are extended hours (ATWEH) and always count."
+            >
+              <div className="segmented">
+                {OT_AFTER.map((m) => (
+                  <button key={m} aria-pressed={s.otAfterMin === m} onClick={() => save({ otAfterMin: m })}>
+                    {m === 0 ? 'Any' : `${m} min`}
+                  </button>
+                ))}
+              </div>
+            </Row>
+          </>
+        )}
       </div>
       <div>
         <button className="primary" onClick={() => window.pong.askNow()}>

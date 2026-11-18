@@ -46,3 +46,11 @@ export function dutyLine(output: Output | undefined, duties: Duty[]): string {
   const section = duty.category === 'core' ? 'A.) Specific duties' : 'B.) Support functions'
   return `On the DAR: the % goes in the row "${output.title}", under ${duty.title} (${section}). Your note's words stay in Pong.`
 }
+
+// The small second line on a task chip: which duty (and section) it's under, so two
+// tasks with the same name, e.g. "Expanded Service Coverage" under two duties, differ.
+export function dutyTag(output: Output, duties: Duty[]): string {
+  const duty = duties.find((d) => d.id === output.dutyId)
+  if (!duty) return ''
+  return `${duty.category === 'core' ? 'A.)' : 'B.)'} ${duty.title}${duty.archived ? ' (archived)' : ''}`
+}
