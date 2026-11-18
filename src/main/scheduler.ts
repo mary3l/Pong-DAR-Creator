@@ -16,6 +16,7 @@ const TICK_MS = 30_000
 
 let dueAt: number | null = null // when the next check-in is due (ms); null = not planned
 let pausedUntilMs = 0 // a timestamp; 0 = not paused
+let extended = false // the last tick saw an OT or weekend session (check-ins after hours)
 
 // ---- pause (tray, Ctrl+Alt+P, "On a break")
 
@@ -73,7 +74,8 @@ export function startScheduler(db: DatabaseSync): void {
     // At the PC = not away and not idle; a full-screen app still counts as here, but
     // Pong waits for it to end before asking.
     const attendance = checkAttendance(now, reason === null || reason === 'fullscreen')
-    if (attendance.due && reason === null && !isBusy()) {
+    extended = attendance.extended
+    if (attendance.due && reason === null && !isBusy() && !isPaused()) {
       askAttendance(attendance.due)
       return
     }
@@ -98,9 +100,10 @@ export function startScheduler(db: DatabaseSync): void {
   setTimeout(step, 3000) // a first look shortly after starting
 
   // A note saved any other way (hotkey, tray) counts as a check-in: start the hour over.
+  // After hours that holds too while an OT or weekend session keeps check-ins going.
   events.on('entry-saved', () => {
     const s = getSettings()
-    if (isWorkTime(new Date(), s)) dueAt = nextCheckinAt(Date.now(), s, Math.random())
+    if (extended || isWorkTime(new Date(), s)) dueAt = nextCheckinAt(Date.now(), s, Math.random())
   })
   // New work hours or interval: plan again from scratch.
   events.on('settings-changed', () => (dueAt = null))

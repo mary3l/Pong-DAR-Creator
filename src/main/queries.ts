@@ -154,8 +154,19 @@ export function updateOutput(
 }
 
 // Moves an MFO, with all its notes, under another duty (drag and drop in the Tasks tab).
+// Never into an archived duty. If the duty already has an MFO with the same title, the
+// two are merged instead, so the DAR never gets two rows with the same name.
 export function moveOutput(db: DatabaseSync, id: number, dutyId: number): void {
-  db.prepare(`UPDATE outputs SET duty_id = ? WHERE id = ?`).run(dutyId, id)
+  const duty = db.prepare(`SELECT archived FROM duties WHERE id = ?`).get(dutyId) as { archived: number } | undefined
+  if (!duty) throw new Error('That duty no longer exists.')
+  if (duty.archived === 1) throw new Error('Restore the duty before moving tasks into it.')
+  const moving = db.prepare(`SELECT title FROM outputs WHERE id = ?`).get(id) as { title: string } | undefined
+  if (!moving) throw new Error('That task no longer exists.')
+  const twin = db
+    .prepare(`SELECT id FROM outputs WHERE duty_id = ? AND id <> ? AND lower(trim(title)) = lower(trim(?)) ORDER BY id LIMIT 1`)
+    .get(dutyId, id, moving.title) as { id: number } | undefined
+  if (twin) mergeOutput(db, id, twin.id)
+  else db.prepare(`UPDATE outputs SET duty_id = ? WHERE id = ?`).run(dutyId, id)
 }
 
 // Merges two MFOs into one row: every note of `fromId` is re-tagged to `intoId`, then

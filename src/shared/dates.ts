@@ -69,6 +69,12 @@ export function toIso(d: Date): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
 }
 
+// '13:05' -> "1:05 PM"
+export function time12(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  return `${h % 12 || 12}:${pad(m)} ${h < 12 ? 'AM' : 'PM'}`
+}
+
 // 5 -> '05'. Not exported: only this file uses it.
 function pad(n: number): string {
   return String(n).padStart(2, '0')

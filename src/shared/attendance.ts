@@ -18,6 +18,10 @@ export const SNAP_MIN = 15 // a time-out up to 15 min before your end time count
 export const OT_ASK_AFTER_MIN = 15 // "Still working? Overtime?" 15 min after your end time
 export const LUNCH_REMIND_MIN = 90 // "Back from lunch?" after 90 min out
 export const AWAY_GAP_MIN = 60 // not seen for an hour with the session open: you went home
+export const DAY_STARTS_HOUR = 5 // before 5 AM it's still last night: no time-in question
+
+// Is it late enough for "the first moment Pong sees you" to start a work day?
+export const dayStarted = (now: Date): boolean => now.getHours() >= DAY_STARTS_HOUR
 
 // A timestamp without a Z is read as local time, so this matches new Date(y, m, d, h, mi).
 export const stampMs = (stamp: string): number => new Date(stamp).getTime()
@@ -58,7 +62,7 @@ export function timeOutStamp(date: string, now: string, workEnd: string): string
 
 // The exact extra minutes, before any minimum. `now` stands in for a missing time-out
 // (the Today view shows OT so far).
-//   work day:      time-out minus end time
+//   work day:      time-out minus the end time (or minus the time-in, if you came in after it)
 //   non-work day:  the whole session, minus lunch if you logged it
 export function extraMinutes(rec: Attendance, workEnd: string, now?: string): number {
   const out = rec.timeOut ?? now
@@ -68,7 +72,7 @@ export function extraMinutes(rec: Attendance, workEnd: string, now?: string): nu
     ms = stampMs(out) - stampMs(rec.timeIn)
     if (rec.lunchOut && rec.lunchIn) ms -= stampMs(rec.lunchIn) - stampMs(rec.lunchOut)
   } else {
-    ms = stampMs(out) - stampMs(stampAt(rec.date, workEnd))
+    ms = stampMs(out) - Math.max(stampMs(stampAt(rec.date, workEnd)), stampMs(rec.timeIn))
   }
   return Math.max(0, Math.floor(ms / MINUTE))
 }
@@ -121,7 +125,7 @@ export type AttendanceDue = 'time-in' | 'forgot-out' | 'ot-ask' | 'lunch-back' |
 // this every 30 seconds while you're at the PC, before the regular check-in.
 //   An earlier day still open, and you've been away an hour since: you forgot to time out.
 //     (Still at it past midnight: nothing to ask, the session simply goes on.)
-//   No record today: time in.
+//   No record today, and it's 5 AM or later: time in.
 //   Out for lunch 90 min: back yet?
 //   A work day, 15 min past your end time, OT not answered: still working?
 export function attendanceDue(input: AttendanceInput, s: AttendanceSettings): AttendanceDue {
@@ -132,7 +136,7 @@ export function attendanceDue(input: AttendanceInput, s: AttendanceSettings): At
     const seen = open.lastSeen ?? open.timeIn
     return now - stampMs(seen) >= AWAY_GAP_MIN * MINUTE ? 'forgot-out' : null
   }
-  if (!today) return 'time-in'
+  if (!today) return dayStarted(input.now) ? 'time-in' : null
   if (!isOpen(today)) return null
   if (today.lunchOut && !today.lunchIn) {
     return s.trackLunch && now - stampMs(today.lunchOut) >= LUNCH_REMIND_MIN * MINUTE ? 'lunch-back' : null

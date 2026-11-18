@@ -28,6 +28,7 @@ import { getSettings, saveSettings } from './settings'
 import { importFromWorkbook } from './workbook'
 import { readDarSheet, seedDatabase } from './seed'
 import { currentCheckinRequest, fitCheckin, hideWindow, openCheckin, send, setPongHover, showWindow } from './windows'
+import { stampMs } from '../shared/attendance'
 import { buildGrid, periodFor, type DarGrid } from '../shared/cutoff'
 import { isIsoDate, localDate, localTimestamp } from '../shared/dates'
 import { commitWindow, mergeSuggestions } from '../shared/gitlog'
@@ -48,6 +49,7 @@ const PONG_ACTIONS: PongAction[] = [
 ]
 const APPROVALS: Approval[] = ['yes', 'no', 'pending']
 const TIME_KEYS = ['timeIn', 'lunchOut', 'lunchIn', 'timeOut'] as const
+const DAY_MS = 24 * 60 * 60_000
 const PROFILE_KEYS: (keyof Profile)[] = [
   'name', 'position', 'department', 'unit', 'teamLeader',
   'confirmedBy', 'confirmedTitle', 'notedBy', 'notedTitle', 'workbookPath'
@@ -220,6 +222,12 @@ export function registerIpc(db: DatabaseSync): void {
     check(!next.timeIn || next.timeIn.slice(0, 10) === date, 'time-in on another day')
     check(!next.timeIn || !next.timeOut || next.timeOut >= next.timeIn, 'time-out before time-in')
     check(!next.lunchOut || !next.lunchIn || next.lunchIn >= next.lunchOut, 'lunch back before lunch out')
+    // A session is less than a day long, and lunch sits inside it.
+    check(!next.timeIn || !next.timeOut || stampMs(next.timeOut) - stampMs(next.timeIn) < DAY_MS, 'session of 24 h or more')
+    for (const t of [next.lunchOut, next.lunchIn]) {
+      check(!t || !next.timeIn || t >= next.timeIn, 'lunch before time-in')
+      check(!t || !next.timeOut || t <= next.timeOut, 'lunch after time-out')
+    }
     return saveAttendance(date, changes)
   })
 

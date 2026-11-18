@@ -3,7 +3,7 @@
 // (window.pong.commitSuggestions). Shows nothing when there are no repos or no commits.
 import { useEffect, useState } from 'react'
 import type { CommitSuggestion } from '../../../shared/gitlog'
-import { time12 } from '../windows/main/TodayView'
+import { time12 } from '../../../shared/dates'
 
 export default function CommitSuggestions(props: {
   date: string // the day the note is for

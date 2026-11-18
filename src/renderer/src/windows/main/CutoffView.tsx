@@ -4,9 +4,9 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import Pong from '../../components/Pong'
 import { periodFor, type DarGrid, type GridDuty } from '../../../../shared/cutoff'
-import { addDays, isWeekend, localDate } from '../../../../shared/dates'
+import { addDays, isWeekend, localDate, time12 } from '../../../../shared/dates'
 import type { DayStatus, DayType, Entry, ExportRecord, ExportResult, Period, Profile } from '../../../../shared/types'
-import { NoteEditor, PCT_STYLE, time12 } from './TodayView'
+import { NoteEditor, PCT_STYLE } from './TodayView'
 import { useTasks } from '../../components/useTasks'
 
 // Clicking a weekday's date: work day -> sick -> personal -> holiday -> work day.

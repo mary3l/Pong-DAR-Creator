@@ -19,7 +19,7 @@ export function isWorkTime(now: Date, s: ScheduleSettings): boolean {
   if (!s.workDays.includes(now.getDay())) return false
   const m = now.getHours() * 60 + now.getMinutes()
   if (m < minutesOf(s.workStart) || m >= minutesOf(s.workEnd)) return false
-  return !(m >= minutesOf(s.lunchStart) && m < minutesOf(s.lunchEnd))
+  return !isLunchTime(now, s)
 }
 
 // When to ask next, counting from `from`. random is 0..1 (Math.random() in the app,
@@ -47,9 +47,17 @@ export interface TickInput {
 //     That's also why coming back from a locked screen asks at most once: one check-in
 //     was overdue, it's asked, and the next one is planned a full interval later.
 //   Due and free: ask, and plan the next one an interval from now.
+// The lunch break (12:00-13:00 by default), on any day.
+export function isLunchTime(now: Date, s: ScheduleSettings): boolean {
+  const m = now.getHours() * 60 + now.getMinutes()
+  return m >= minutesOf(s.lunchStart) && m < minutesOf(s.lunchEnd)
+}
+
 export function tick(input: TickInput, s: ScheduleSettings): { dueAt: number | null; ask: boolean } {
   const now = input.now.getTime()
   if (!input.extended && !isWorkTime(input.now, s)) return { dueAt: null, ask: false }
+  // An extended session lifts work hours and work days, not the lunch break: wait it out.
+  if (input.extended && isLunchTime(input.now, s)) return { dueAt: input.dueAt, ask: false }
   if (input.dueAt === null) {
     return { dueAt: now + (FIRST_MIN + input.random * FIRST_SPREAD_MIN) * MINUTE, ask: false }
   }

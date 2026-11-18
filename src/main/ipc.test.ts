@@ -101,6 +101,15 @@ describe('attendance:set', () => {
     expect(q.attendanceFor(db, FRI)).toMatchObject({ timeOut: null, lunchOut: null })
   })
 
+  it('rejects a session of 24 hours or more, and lunch outside the session', () => {
+    call('attendance:set', FRI, { timeIn: `${FRI}T08:00:00` })
+    expect(() => call('attendance:set', FRI, { timeOut: '2026-11-07T08:00:00' })).toThrow()
+    expect(() => call('attendance:set', FRI, { lunchOut: `${FRI}T07:30:00` })).toThrow()
+    call('attendance:set', FRI, { timeOut: `${FRI}T17:00:00` })
+    expect(() => call('attendance:set', FRI, { lunchIn: `${FRI}T17:30:00` })).toThrow()
+    expect(q.attendanceFor(db, FRI)).toMatchObject({ timeOut: `${FRI}T17:00:00`, lunchOut: null, lunchIn: null })
+  })
+
   it('rejects a time-in on another day, bad stamps and unknown fields', () => {
     expect(() => call('attendance:set', FRI, { timeIn: '2026-11-07T08:00:00' })).toThrow()
     expect(() => call('attendance:set', FRI, { timeIn: `${FRI}T24:00:00` })).toThrow()

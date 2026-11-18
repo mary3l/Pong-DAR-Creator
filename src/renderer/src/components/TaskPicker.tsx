@@ -24,7 +24,12 @@ export default function TaskPicker(props: {
   const chips: Output[] =
     selected && !tasks.recent.some((o) => o.id === selected.id) ? [...tasks.recent, selected] : tasks.recent
   const activeDuties = tasks.duties.filter((d) => !d.archived)
-  const others = tasks.outputs.filter((o) => o.status === 'active' && activeDuties.some((d) => d.id === o.dutyId))
+  // "All tasks…" lists the active MFOs that aren't already a chip.
+  const others = tasks.outputs.filter(
+    (o) => o.status === 'active' && activeDuties.some((d) => d.id === o.dutyId) && !chips.some((c) => c.id === o.id)
+  )
+  // Only duties with something to pick get a group: no empty headings.
+  const otherDuties = activeDuties.filter((d) => others.some((o) => o.dutyId === d.id))
 
   // With no duties yet, there's nothing to pick: start with a new A.) duty.
   const duty = dutyId === '' && activeDuties.length === 0 ? 'new-core' : dutyId
@@ -92,7 +97,7 @@ ${dutyTag(o, tasks.duties)}`}
             }}
           >
             <option value="">All tasks…</option>
-            {activeDuties.map((d) => (
+            {otherDuties.map((d) => (
               <optgroup key={d.id} label={`${d.category === 'core' ? 'A.)' : 'B.)'} ${d.title}`}>
                 {others
                   .filter((o) => o.dutyId === d.id)

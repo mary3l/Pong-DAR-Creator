@@ -7,7 +7,7 @@ import Pong from '../../components/Pong'
 import TaskPicker from '../../components/TaskPicker'
 import { useTasks, type Tasks } from '../../components/useTasks'
 import { missedDays, periodFor } from '../../../../shared/cutoff'
-import { localDate } from '../../../../shared/dates'
+import { localDate, time12 } from '../../../../shared/dates'
 import { DEFAULT_SETTINGS, minutesOf } from '../../../../shared/settings'
 import type { Entry, Output, Progress } from '../../../../shared/types'
 
@@ -17,12 +17,6 @@ export const PCT_STYLE: Record<number, { bg: string; fg: string; bar: string }> 
   0.5: { bg: '#C9E5E0', fg: '#1F5E5A', bar: '#6FB5AB' },
   0.75: { bg: '#9FD0C8', fg: '#173F3C', bar: '#4C9E94' },
   1: { bg: '#2F7F7A', fg: '#FFFFFF', bar: '#2F7F7A' }
-}
-
-// '13:05' -> "1:05 PM"
-export const time12 = (hhmm: string) => {
-  const [h, m] = hhmm.split(':').map(Number)
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
 }
 
 const longToday = () => new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })

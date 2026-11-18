@@ -9,7 +9,7 @@ import { events } from './events'
 import * as q from './queries'
 import { getSettings } from './settings'
 import {
-  attendanceDue, countedMinutes, extendedSession, hhmm, isOpen, isWorkDay, nonWorkLabel, onLunch, sessionState,
+  attendanceDue, countedMinutes, dayStarted, extendedSession, hhmm, isOpen, isWorkDay, nonWorkLabel, onLunch, sessionState,
   stampAt, timeOutStamp, type AttendanceDue
 } from '../shared/attendance'
 import { localDate, localTimestamp } from '../shared/dates'
@@ -38,8 +38,16 @@ function dayType(date: string): DayType | null {
 
 export const todayRecord = (): Attendance | null => q.attendanceFor(db, localDate())
 
+// The session the tray and hover buttons act on: today's, or one still going past
+// midnight (a time-out after midnight belongs to the time-in day).
+function sessionRecord(): Attendance | null {
+  const today = todayRecord()
+  if (isOpen(today)) return today
+  return q.openSessionBefore(db, localDate()) ?? today
+}
+
 export function currentSession(): SessionState {
-  return sessionState(todayRecord(), getSettings())
+  return sessionState(sessionRecord(), getSettings())
 }
 
 export function snoozeAttendance(minutes: number): void {
@@ -64,7 +72,11 @@ export function checkAttendance(now: Date, present: boolean): AttendanceCheck {
 
   const due = attendanceDue({ now, today, open }, s)
   if (present) {
-    if (firstSeen?.date !== date) firstSeen = { date, at: stamp }
+    // A work day starts the first time Pong sees you from 5 AM on, with no session from
+    // last night still going: being up at 00:05 on OT is not a new day's time-in. A
+    // forgotten session (not seen for an hour) doesn't count as still going.
+    const stillGoing = open !== null && due !== 'forgot-out'
+    if (firstSeen?.date !== date && !stillGoing && dayStarted(now)) firstSeen = { date, at: stamp }
     // Still here. Not when an old session waits for its time-out: its last seen is the
     // evidence of when you left.
     if (due !== 'forgot-out') {
@@ -75,12 +87,13 @@ export function checkAttendance(now: Date, present: boolean): AttendanceCheck {
   return {
     due: present && Date.now() >= quietUntil ? due : null,
     extended: extendedSession(today) || (due !== 'forgot-out' && extendedSession(open)),
-    quiet: onLunch(today) || (today !== null && !today.timeIn)
+    quiet: onLunch(today) || onLunch(open) || (today !== null && !today.timeIn)
   }
 }
 
 // The bubble for a question. Main only: it needs the database for names and times.
-export function attendanceBubble(due: NonNullable<AttendanceDue>): Bubble {
+// null when the question no longer applies (the session was closed in the meantime).
+export function attendanceBubble(due: NonNullable<AttendanceDue>): Bubble | null {
   const s = getSettings()
   const date = localDate()
   switch (due) {
@@ -90,8 +103,8 @@ export function attendanceBubble(due: NonNullable<AttendanceDue>): Bubble {
       return { kind: 'time-in', at: hhmm(at), nonWork: isWorkDay(date, s.workDays, type) ? null : nonWorkLabel(date, type) }
     }
     case 'forgot-out': {
-      const open = q.openSessionBefore(db, date)!
-      return { kind: 'forgot-out', date: open.date, lastSeen: hhmm(lastSeenOut(open)) }
+      const open = q.openSessionBefore(db, date)
+      return open ? { kind: 'forgot-out', date: open.date, lastSeen: hhmm(lastSeenOut(open)) } : null
     }
     case 'ot-ask':
       return { kind: 'ot-ask', end: s.workEnd }
@@ -108,11 +121,14 @@ function lastSeenOut(open: Attendance): string {
 // ---- what your clicks do
 
 // Time in. Answering the morning bubble uses the moment Pong first saw you; timing in
-// later after "Not working today" uses now.
+// later after "Not working today" uses now. Already timed in today: nothing changes
+// (a second click from the tray or an old bubble keeps the first time-in).
 export function timeIn(): Attendance {
   const date = localDate()
+  const today = todayRecord()
+  if (today?.timeIn) return today
   const now = localTimestamp()
-  const at = todayRecord() === null && firstSeen?.date === date ? firstSeen.at : now
+  const at = today === null && firstSeen?.date === date ? firstSeen.at : now
   return saveAttendance(date, {
     timeIn: at,
     lastSeen: now,
@@ -124,17 +140,23 @@ export function notWorkingToday(): void {
   if (todayRecord() === null) saveAttendance(localDate(), {})
 }
 
+// Lunch and "Yes, OT" act on the open session (past midnight too), never on a new day:
+// a write to a day with no time-in would read as "Not working today".
 export function lunchOut(): void {
-  saveAttendance(localDate(), { lunchOut: localTimestamp(), lunchIn: null })
+  const date = openDate()
+  if (date && !onLunch(q.attendanceFor(db, date))) saveAttendance(date, { lunchOut: localTimestamp(), lunchIn: null })
 }
 
 export function lunchIn(): void {
-  saveAttendance(localDate(), { lunchIn: localTimestamp() })
+  const date = openDate()
+  if (date && onLunch(q.attendanceFor(db, date))) saveAttendance(date, { lunchIn: localTimestamp() })
 }
 
 // "Yes, OT": mark it pending; the extra-time card asks about approval at time-out.
+// An approval already answered (yes / no / pending) stays as it is.
 export function overtimeYes(): void {
-  saveAttendance(localDate(), { approved: 'pending' })
+  const date = openDate()
+  if (date && q.attendanceFor(db, date)?.approved === null) saveAttendance(date, { approved: 'pending' })
 }
 
 // Which session a Time out click closes: today's, or one still going past midnight.

@@ -8,7 +8,7 @@ import { countedMinutes, formatMinutes, hhmm } from '../../../../shared/attendan
 import { dayLong } from '../../../../shared/cutoff'
 import { DEFAULT_SETTINGS, type Settings } from '../../../../shared/settings'
 import type { Approval, Attendance } from '../../../../shared/types'
-import { time12 } from '../main/TodayView'
+import { time12 } from '../../../../shared/dates'
 import { CloseButton } from './EntryCard'
 
 export default function ExtraCard(props: { date: string; onDone: () => void }) {

@@ -5,14 +5,20 @@
 // Earlier days of the cutoff that still need something (a missing time-out, an approval
 // still "Not yet") are listed under it.
 import { useEffect, useState } from 'react'
-import { countedMinutes, extraKind, formatMinutes, hhmm, isOpen, stampAt } from '../../../../shared/attendance'
+import { countedMinutes, DAY_STARTS_HOUR, extraKind, formatMinutes, hhmm, isOpen, stampAt } from '../../../../shared/attendance'
 import { dayLong, periodFor } from '../../../../shared/cutoff'
-import { localDate, localTimestamp } from '../../../../shared/dates'
+import { addDays, localDate, localTimestamp, time12 } from '../../../../shared/dates'
 import { DEFAULT_SETTINGS, type Settings } from '../../../../shared/settings'
 import type { Approval, Attendance, AttendanceChanges } from '../../../../shared/types'
-import { time12 } from './TodayView'
 
 const APPROVAL_LABEL: Record<Approval, string> = { yes: 'Approved', pending: 'Not yet', no: 'Not approved' }
+
+// A typed time on a day's session. Only a time before 5 AM that comes before the time-in
+// is read as after midnight (out at 00:30 after OT). Anything else stays on the day, so
+// a time-out typed earlier than the time-in is refused by main, not turned into a
+// 21-hour session.
+const sessionStamp = (rec: Attendance, time: string): string =>
+  Number(time.slice(0, 2)) < DAY_STARTS_HOUR ? stampAt(rec.date, time, rec.timeIn) : stampAt(rec.date, time)
 
 export default function AttendanceCard(props: { version: number }) {
   const today = localDate()
@@ -26,7 +32,9 @@ export default function AttendanceCard(props: { version: number }) {
   useEffect(() => {
     window.pong.getAttendance(today).then(setRec)
     window.pong.getSettings().then(setSettings)
-    window.pong.attendanceInPeriod(periodFor(today)).then((all) =>
+    // This cutoff and the one before: a session left open on the 2nd still shows on the 3rd.
+    const from = periodFor(addDays(periodFor(today).start, -1)).start
+    window.pong.attendanceInPeriod({ start: from, end: addDays(today, -1) }).then((all) =>
       setEarlier(all.filter((a) => a.date < today && a.timeIn && (!a.timeOut || a.approved === 'pending')))
     )
   }, [props.version, today])
@@ -81,7 +89,7 @@ export default function AttendanceCard(props: { version: number }) {
             <TimeField
               label="No time-out. Left at"
               value={null}
-              onSave={(t) => t && save(a.date, { timeOut: stampAt(a.date, t, a.timeIn) })}
+              onSave={(t) => t && save(a.date, { timeOut: sessionStamp(a, t) })}
             />
           ) : (
             <ApprovalPicker rec={a} settings={settings} onSave={(approved) => save(a.date, { approved })} />
@@ -99,7 +107,7 @@ function DayTimes(props: { rec: Attendance; settings: Settings; onSave: (changes
   const { rec, settings } = props
   const open = isOpen(rec)
   const minutes = countedMinutes(rec, settings, open ? localTimestamp() : undefined)
-  const stamp = (t: string | null) => (t ? stampAt(rec.date, t, rec.timeIn) : null)
+  const stamp = (t: string | null) => (t ? sessionStamp(rec, t) : null)
   const showLunch = settings.trackLunch || rec.lunchOut !== null
 
   return (

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import Pong from '../../components/Pong'
 import { dayLong, weekdayName } from '../../../../shared/cutoff'
 import type { PongAction, PongState } from '../../../../shared/types'
-import { time12 } from '../main/TodayView'
+import { time12 } from '../../../../shared/dates'
 import './pong.css'
 
 const act = (action: PongAction) => () => window.pong.pongAction(action)

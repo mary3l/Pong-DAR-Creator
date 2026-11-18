@@ -16,7 +16,7 @@ import { getSettings } from './settings'
 import { setPongExpanded } from './placement'
 import { getWindow, openCheckin, send, showWindow } from './windows'
 import { hhmm, type AttendanceDue } from '../shared/attendance'
-import { localDate } from '../shared/dates'
+import { localDate, time12 } from '../shared/dates'
 import type { Bubble, PongAction, PongMood, PongState } from '../shared/types'
 
 let db: DatabaseSync
@@ -77,7 +77,9 @@ export function askAttendance(due: NonNullable<AttendanceDue>): void {
   clearTimers()
   set('peek', null)
   later(1000, () => {
-    set('ask', attendanceBubble(due))
+    const bubble = attendanceBubble(due)
+    if (!bubble) return set('sleep', null) // answered some other way in the meantime
+    set('ask', bubble)
     later(10 * 60_000, () => {
       snoozeAttendance(30)
       set('sleep', null)
@@ -86,12 +88,6 @@ export function askAttendance(due: NonNullable<AttendanceDue>): void {
 }
 
 const ATTENDANCE_BUBBLES = ['time-in', 'forgot-out', 'ot-ask', 'lunch-back']
-
-// '17:00' -> "5:00 PM"
-const clock = (time: string): string => {
-  const [h, m] = time.split(':').map(Number)
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
-}
 
 // Time out, then either "See you tomorrow!" or, with OT / extended hours, the card that
 // asks about approval (a click started this, so the card may take focus).
@@ -102,7 +98,7 @@ function timeOutAndAsk(how: 'now' | 'end' | 'last-seen', date?: string): void {
   const { record, minutes } = result
   if (minutes > 0) return openCheckin({ mode: 'extra', date: record.date })
   const today = record.date === localDate()
-  toast('happy', `Timed out at ${clock(hhmm(record.timeOut!))}`, today ? 'See you tomorrow!' : 'All set. Have a good day!')
+  toast('happy', `Timed out at ${time12(hhmm(record.timeOut!))}`, today ? 'See you tomorrow!' : 'All set. Have a good day!')
 }
 
 // "It's been about an hour since your last note." from today's newest note.
@@ -147,7 +143,7 @@ export function act(action: PongAction): void {
       const sub = rec.nonWorkDay
         ? 'This counts as extended hours. Remember your ATWEH.'
         : "Have a good day! I'll check in now and then."
-      toast('happy', `Timed in at ${clock(hhmm(rec.timeIn!))}`, sub, 4600)
+      toast('happy', `Timed in at ${time12(hhmm(rec.timeIn!))}`, sub, 4600)
       return
     }
     case 'not-working':
@@ -211,6 +207,13 @@ export function initPong(database: DatabaseSync): void {
   })
 
   events.on('settings-changed', () => set(state.mood, state.bubble))
-  // Timed in or out from the tray or the Today view: the hover buttons follow.
-  events.on('attendance-saved', () => set(state.mood, state.bubble))
+  // Timed in or out from the tray or the Today view: the hover buttons follow, and an
+  // attendance question still up is now stale (answered elsewhere): put it away, so a
+  // late click on it can't overwrite what was saved.
+  events.on('attendance-saved', () => {
+    if (state.bubble && ATTENDANCE_BUBBLES.includes(state.bubble.kind)) {
+      clearTimers()
+      set('sleep', null)
+    } else set(state.mood, state.bubble)
+  })
 }
