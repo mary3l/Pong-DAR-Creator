@@ -119,14 +119,15 @@ function checkProfile(v: unknown): asserts v is Partial<Profile> {
   }
 }
 
-// The DAR grid for one cutoff: four queries in, one pure function out.
+// The DAR grid for one cutoff: four queries and your work days in, one pure function out.
 function gridFor(db: DatabaseSync, period: Period): DarGrid {
   return buildGrid(
     period,
     q.entriesInPeriod(db, period),
     q.listDuties(db),
     q.listOutputs(db),
-    q.dayStatusInPeriod(db, period)
+    q.dayStatusInPeriod(db, period),
+    getSettings().workDays
   )
 }
 

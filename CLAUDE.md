@@ -111,7 +111,7 @@ Migrations: an ordered array of SQL strings in `db.ts`, tracked with `PRAGMA use
 - Cutoff periods: 3rd-17th, and 18th to the 2nd of the next month. Sheet name like "October 18 - November 2" (full month names, " - ", no leading zeros, max 31 chars).
 - Grid: Function (A = Core, "SPECIFIC DUTIES AND RESPONSIBILITIES"; B = Support) -> Duty -> MFO rows, one column per day.
 - Cell value = MAX(progress) for that MFO on that date, written as a number (0.25 ... 1) with format 0%.
-- Day off = a day_status row, or a weekend date with no notes. It becomes one merged cell down the whole function block for that day, text "Rest Day", "Sick Leave", "Personal Leave" or "Holiday". A weekend with notes is a normal work day.
+- Day off = a day_status row, or a date outside settings.workDays (default Mon-Fri) with no notes. It becomes one merged cell down the whole function block for that day, text "Rest Day", "Sick Leave", "Personal Leave" or "Holiday". A non-work day with notes is a normal work day; a work day (e.g. a work Saturday) with no notes is a blank column.
 - Days attended = dates in the period with at least one note, excluding day_status dates. The sample's Oct 3-17 gives 12.
 - Missed day = a past date in the current period with no notes and no day_status row, on or after settings.startedOn (the first-run date).
 - Attendance: one row per day you timed in; a row with no time_in = "Not working today". Times are full local timestamps, so a time-out after midnight belongs to the time-in day. OT minutes are never stored: worked out from the times + settings.

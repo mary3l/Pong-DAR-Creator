@@ -1,10 +1,12 @@
 // CutoffView.tsx: the DAR for one cutoff, laid out like the real sheet, and the Export
-// button. Click a weekday's date to cycle Sick Leave, Personal Leave, Holiday. Click a %
+// button. Click a work day's date to cycle Sick Leave, Personal Leave, Holiday. Click a %
 // to see, edit or delete the notes behind it. Runs in the RENDERER.
 import { useEffect, useState, type CSSProperties } from 'react'
 import Pong from '../../components/Pong'
 import { periodFor, type DarGrid, type GridDuty } from '../../../../shared/cutoff'
-import { addDays, isWeekend, localDate, time12 } from '../../../../shared/dates'
+import { isWorkDay } from '../../../../shared/attendance'
+import { addDays, localDate, time12 } from '../../../../shared/dates'
+import { DEFAULT_SETTINGS } from '../../../../shared/settings'
 import type { DayStatus, DayType, Entry, ExportRecord, ExportResult, Period, Profile } from '../../../../shared/types'
 import { NoteEditor, PCT_STYLE } from './TodayView'
 import { useTasks } from '../../components/useTasks'
@@ -47,6 +49,8 @@ export default function CutoffView(props: { version: number; onChange: () => voi
   const [result, setResult] = useState<ExportResult | null>(null)
   const [error, setError] = useState('')
   const [codesRow, setCodesRow] = useState(true)
+  // Your work days (Settings): only those dates can be clicked to mark leave or a holiday.
+  const [workDays, setWorkDays] = useState(DEFAULT_SETTINGS.workDays)
   // The % cell you clicked: its notes show under the grid.
   const [picked, setPicked] = useState<{ outputId: number; date: string; title: string } | null>(null)
 
@@ -65,7 +69,10 @@ export default function CutoffView(props: { version: number; onChange: () => voi
   }
 
   useEffect(() => {
-    window.pong.getSettings().then((s) => setCodesRow(s.codesRow))
+    window.pong.getSettings().then((s) => {
+      setCodesRow(s.codesRow)
+      setWorkDays(s.workDays)
+    })
     window.pong.buildGrid(period).then(setGrid)
     window.pong.dayStatusInPeriod(period).then(setStatuses)
     window.pong.entriesInPeriod(period).then(setEntries)
@@ -182,7 +189,7 @@ export default function CutoffView(props: { version: number; onChange: () => voi
             const style: CSSProperties = { gridColumn: 4 + i, gridRow: '1 / span 2' }
             const num = Number(d.date.slice(8))
             const className = `day-head${d.date === today ? ' today' : ''}`
-            if (isWeekend(d.date)) {
+            if (!isWorkDay(d.date, workDays, null)) {
               return (
                 <div key={d.date} className={className} style={style}>
                   <span>{num}</span>
@@ -329,10 +336,10 @@ export default function CutoffView(props: { version: number; onChange: () => voi
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <span style={{ fontSize: 14, fontWeight: 800 }}>
               {grid.daysAttended} days attended · {mfoCount} MFOs ·{' '}
-              {missing === 0 ? 'no missing days' : `${missing} ${missing === 1 ? 'weekday' : 'weekdays'} with no notes`}
+              {missing === 0 ? 'no missing days' : `${missing} work ${missing === 1 ? 'day' : 'days'} with no notes`}
             </span>
             <span className="muted" style={{ fontSize: 13 }}>
-              Click a % to see, edit or delete the notes behind it. Click a weekday's date to mark sick leave, personal leave or a holiday.
+              Click a % to see, edit or delete the notes behind it. Click a work day's date to mark sick leave, personal leave or a holiday.
             </span>
           </div>
           <button className="big-teal" disabled={busy} onClick={exportSheet}>

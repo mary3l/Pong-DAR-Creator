@@ -53,6 +53,11 @@ describe('missed-day questions', () => {
     expect(missedQuestion('2026-10-19', '2026-10-26')).toBe('Day off on Oct 19?') // a week back
     expect(dayLong('2026-10-24')).toBe('Saturday, Oct 24')
   })
+
+  it('asks "Day off" about a Saturday that is one of your work days', () => {
+    expect(missedQuestion('2026-10-24', '2026-10-26', [1, 2, 3, 4, 5, 6])).toBe('Day off on Saturday?')
+    expect(missedQuestion('2026-10-25', '2026-10-26', [1, 2, 3, 4, 5, 6])).toBe('Rest day yesterday?')
+  })
 })
 
 describe('missedDays', () => {
@@ -112,6 +117,18 @@ describe('buildGrid', () => {
     // toMatchObject checks only the fields listed and ignores the rest.
     expect(grid.days[0]).toMatchObject({ date: '2026-10-03', dayName: 'SAT', off: null })
     expect(grid.days[1]).toMatchObject({ date: '2026-10-04', dayName: 'SUN', off: 'Rest Day' })
+  })
+
+  it('follows your work days: a work Saturday is never an automatic Rest Day', () => {
+    const monToSat = [1, 2, 3, 4, 5, 6]
+    const empty = buildGrid(period, [], duties, outputs, [], monToSat)
+    expect(empty.days[0]).toMatchObject({ date: '2026-10-03', dayName: 'SAT', off: null })
+    expect(empty.days[1]).toMatchObject({ date: '2026-10-04', dayName: 'SUN', off: 'Rest Day' })
+    // Bug: a Saturday you worked showed Rest Day. With a note it's a work day either way.
+    const logged = buildGrid(period, [entry('2026-10-03', 1, 0.5)], duties, outputs, [], monToSat)
+    expect(logged.days[0].off).toBeNull()
+    expect(logged.core[0].rows[0].cells[0]).toBe(0.5)
+    expect(logged.daysAttended).toBe(1)
   })
 
   it('uses day_status for leave and leaves those cells blank', () => {

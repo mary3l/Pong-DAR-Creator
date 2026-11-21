@@ -1,7 +1,9 @@
 // cutoff.ts: cutoff periods and the DAR grid.
 // Pure functions: data in, data out. No database, no Electron, no clock (today is
 // always passed in). That's what makes them easy to test thoroughly.
-import { addDays, dayOfWeek, fromIso, isWeekend, toIso } from './dates'
+import { isWorkDay } from './attendance'
+import { addDays, dayOfWeek, fromIso, toIso } from './dates'
+import { DEFAULT_SETTINGS } from './settings'
 // `import type` brings in types only; nothing is loaded at runtime.
 import type { DayStatus, DayType, Duty, Entry, Output, Period, Progress } from './types'
 
@@ -89,9 +91,10 @@ export function whenSaid(date: string, today: string): string {
   return `on ${MONTHS[d.getUTCMonth()].slice(0, 3)} ${d.getUTCDate()}`
 }
 
-// The missed-day question: "Rest day on Saturday?" for a weekend, "Day off yesterday?" otherwise.
-export function missedQuestion(date: string, today: string): string {
-  return `${isWeekend(date) ? 'Rest day' : 'Day off'} ${whenSaid(date, today)}?`
+// The missed-day question: "Rest day on Sunday?" for one of your non-work days,
+// "Day off yesterday?" otherwise. workDays: settings.workDays (0 = Sunday ... 6 = Saturday).
+export function missedQuestion(date: string, today: string, workDays = DEFAULT_SETTINGS.workDays): string {
+  return `${isWorkDay(date, workDays, null) ? 'Day off' : 'Rest day'} ${whenSaid(date, today)}?`
 }
 
 // Past days in today's period with no notes and no day_status row: Pong asks about these.
@@ -146,12 +149,15 @@ export interface DarGrid {
 
 // Turns raw notes into the DAR grid. Nothing is stored: the grid is rebuilt from
 // notes every time, so editing a note fixes the DAR automatically.
+// workDays: settings.workDays. A day outside them with no notes is a Rest Day; a work
+// day with no notes (a work Saturday, say) stays a blank column.
 export function buildGrid(
   period: Period,
   entries: Entry[],
   duties: Duty[],
   outputs: Output[],
-  dayStatus: DayStatus[]
+  dayStatus: DayStatus[],
+  workDays = DEFAULT_SETTINGS.workDays
 ): DarGrid {
   // Ignore notes outside the period, in case the caller passed extra.
   const inPeriod = entries.filter((e) => e.workDate >= period.start && e.workDate <= period.end)
@@ -160,13 +166,13 @@ export function buildGrid(
   const loggedDates = new Set(inPeriod.map((e) => e.workDate))
 
   // 1. The day columns.
-  // A day_status row always wins; a weekend with no notes is a rest day.
+  // A day_status row always wins; a non-work day with no notes is a rest day.
   const days: GridDay[] = daysIn(period).map((date, i) => {
     const status = statusByDate.get(date)
-    // Nested ternary: status label, else Rest Day for an empty weekend, else a work day.
+    // Nested ternary: status label, else Rest Day for an empty non-work day, else a work day.
     const off = status
       ? DAY_OFF_LABEL[status]
-      : isWeekend(date) && !loggedDates.has(date)
+      : !isWorkDay(date, workDays, null) && !loggedDates.has(date)
         ? DAY_OFF_LABEL.rest
         : null
     return { date, index: i + 1, dayName: DAY_NAMES[dayOfWeek(date)], off }

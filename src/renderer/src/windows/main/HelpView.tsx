@@ -236,7 +236,8 @@ export default function HelpView() {
           </ul>
           <p>
             Close the card (X) or click Later to do it another time: Pong keeps asking until each day is filled. A
-            weekend with no notes already shows as Rest Day in the DAR, so answering for weekends is optional.
+            day outside your work days (Settings) with no notes already shows as Rest Day in the DAR, so answering
+            for those days is optional.
           </p>
         </Section>
 

@@ -2,13 +2,15 @@
 // For each day: "Rest day on Saturday?"
 //   Yes -> Rest day / Sick leave / Personal leave -> Save   (window.pong.setDayStatus)
 //   No  -> add as many logs for that date as you need -> "Done with Saturday"
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import PercentPicker from '../../components/PercentPicker'
 import TaskPicker from '../../components/TaskPicker'
 import CommitSuggestions from '../../components/CommitSuggestions'
 import { useTasks } from '../../components/useTasks'
 import { DAY_OFF_LABEL, dayLong, missedQuestion, weekdayName } from '../../../../shared/cutoff'
-import { isWeekend, localDate } from '../../../../shared/dates'
+import { isWorkDay } from '../../../../shared/attendance'
+import { localDate } from '../../../../shared/dates'
+import { DEFAULT_SETTINGS } from '../../../../shared/settings'
 import type { CommitSuggestion } from '../../../../shared/gitlog'
 import type { DayType, Entry, Progress } from '../../../../shared/types'
 import { CloseButton } from './EntryCard'
@@ -35,6 +37,11 @@ export default function MissedCard(props: { days: string[]; onFinished: () => vo
   const [progress, setProgress] = useState<Progress>(0.5)
   const [error, setError] = useState('')
   const input = useRef<HTMLInputElement>(null)
+  // Your work days (Settings): a missed non-work day defaults to Rest day, a work day to Sick leave.
+  const [workDays, setWorkDays] = useState(DEFAULT_SETTINGS.workDays)
+  useEffect(() => {
+    window.pong.getSettings().then((s) => setWorkDays(s.workDays))
+  }, [])
 
   const day = days[index]
   if (!day) return null
@@ -119,7 +126,7 @@ export default function MissedCard(props: { days: string[]; onFinished: () => vo
   }
 
   const title =
-    step === 'log' ? `What did you do on ${name}?` : step === 'type' ? `Off on ${dayLong(day)}` : missedQuestion(day, today)
+    step === 'log' ? `What did you do on ${name}?` : step === 'type' ? `Off on ${dayLong(day)}` : missedQuestion(day, today, workDays)
   const sub = step === 'log' ? `${dayLong(day)} · add as many logs as you need` : `${dayLong(day)} · no notes logged`
   const pending = logs.length + (text.trim() ? 1 : 0)
   const outputTitle = (id: number | null) => tasks.outputs.find((o) => o.id === id)?.title ?? 'Plain note'
@@ -143,7 +150,7 @@ export default function MissedCard(props: { days: string[]; onFinished: () => vo
             type="button"
             className="big-choice"
             onClick={() => {
-              setLeave(isWeekend(day) ? 'rest' : 'sick')
+              setLeave(isWorkDay(day, workDays, null) ? 'sick' : 'rest')
               setStep('type')
             }}
           >
